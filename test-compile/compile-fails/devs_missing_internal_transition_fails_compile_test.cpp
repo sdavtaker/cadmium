@@ -58,5 +58,5 @@ struct devs_atomic_model_with_no_internal_transition {
 };
 
 int main() {
-    cadmium::concept::devs_atomic_model_assert<devs_atomic_model_with_no_internal_transition>();
+    cadmium::model_checks::devs_atomic_model_assert<devs_atomic_model_with_no_internal_transition>();
 }

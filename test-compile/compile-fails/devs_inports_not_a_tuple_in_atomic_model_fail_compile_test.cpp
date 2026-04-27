@@ -61,5 +61,5 @@ struct devs_atomic_model_with_inputs_as_vector {
 };
 
 int main() {
-    cadmium::concept::devs_atomic_model_assert<devs_atomic_model_with_inputs_as_vector>();
+    cadmium::model_checks::devs_atomic_model_assert<devs_atomic_model_with_inputs_as_vector>();
 }

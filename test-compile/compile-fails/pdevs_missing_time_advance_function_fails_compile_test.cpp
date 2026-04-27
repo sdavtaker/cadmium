@@ -62,5 +62,5 @@ struct devs_atomic_model_missing_time_advance_function {
 };
 
 int main() {
-    cadmium::concept::pdevs::atomic_model_assert<devs_atomic_model_missing_time_advance_function>();
+    cadmium::model_checks::pdevs::atomic_model_assert<devs_atomic_model_missing_time_advance_function>();
 }

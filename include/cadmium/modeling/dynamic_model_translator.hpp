@@ -293,7 +293,7 @@ namespace cadmium {
             struct make_dynamic_models_impl{
                 template<typename P>
                 using current = typename std::tuple_element<S - 1, MT<P>>::type;
-                using current_translator = typename std::conditional<cadmium::concept::is_atomic<current>::value(), make_dynamic_atomic_model_impl<current, TIME>, COUPLED_TRANSLATOR<current>>::type;
+                using current_translator = typename std::conditional<cadmium::model_checks::is_atomic<current>::value(), make_dynamic_atomic_model_impl<current, TIME>, COUPLED_TRANSLATOR<current>>::type;
 
                 static void make_models(models_by_type &ret) {
 

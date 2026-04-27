@@ -37,6 +37,6 @@ int main(){
     using ICs = std::tuple<>;
     using C1=cadmium::modeling::coupled_model<input_ports, output_ports, submodels, EICs, EOCs, ICs>;
 
-    cadmium::concept::coupled_model_assert<C1>();
+    cadmium::model_checks::coupled_model_assert<C1>();
     return 0;
 }

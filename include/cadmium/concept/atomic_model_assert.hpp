@@ -31,7 +31,7 @@
 #include<cadmium/modeling/message_bag.hpp>
 #include<cadmium/modeling/message_box.hpp>
 
-namespace cadmium::concept {
+namespace cadmium::model_checks {
     namespace pdevs {
         //PDEVS
         template<typename FLOATING_MODEL>

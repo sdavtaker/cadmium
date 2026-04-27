@@ -44,7 +44,7 @@ using floating_passive=cadmium::basic_models::pdevs::passive<float, TIME>;
 using floating_passive_defs=cadmium::basic_models::pdevs::passive_defs<float>;
 
 BOOST_AUTO_TEST_CASE( it_is_atomic_test ){
-    BOOST_CHECK(cadmium::concept::is_atomic<floating_passive>::value());
+    BOOST_CHECK(cadmium::model_checks::is_atomic<floating_passive>::value());
 }
 
 BOOST_AUTO_TEST_CASE( it_is_constructable_test )

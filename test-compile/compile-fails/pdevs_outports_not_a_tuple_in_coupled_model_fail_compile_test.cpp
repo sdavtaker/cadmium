@@ -44,6 +44,6 @@ template<typename TIME>
 using C1=cadmium::modeling::pdevs::coupled_model<TIME, input_ports, output_ports, submodels, EICs, EOCs, ICs>;
 
 int main(){
-    cadmium::concept::pdevs::coupled_model_assert<C1>();
+    cadmium::model_checks::pdevs::coupled_model_assert<C1>();
     return 0;
 }

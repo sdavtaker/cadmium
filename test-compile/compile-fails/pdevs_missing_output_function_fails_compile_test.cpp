@@ -61,5 +61,5 @@ struct devs_atomic_model_missing_output_function {
 };
 
 int main() {
-    cadmium::concept::pdevs::atomic_model_assert<devs_atomic_model_missing_output_function>();
+    cadmium::model_checks::pdevs::atomic_model_assert<devs_atomic_model_missing_output_function>();
 }

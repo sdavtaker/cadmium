@@ -70,16 +70,16 @@ namespace cadmium {
                 using input_bags = typename make_message_bags<input_ports>::type;
 
                 atomic() {
-                    static_assert(cadmium::concept::is_atomic<ATOMIC>::value(), "This is not an atomic model");
-                    cadmium::concept::pdevs::atomic_model_assert<ATOMIC>();
+                    static_assert(cadmium::model_checks::is_atomic<ATOMIC>::value(), "This is not an atomic model");
+                    cadmium::model_checks::pdevs::atomic_model_assert<ATOMIC>();
                     _id = boost::typeindex::type_id<model_type>().pretty_name();
                     _input_ports = cadmium::dynamic::modeling::create_dynamic_ports<input_ports>();
                     _output_ports = cadmium::dynamic::modeling::create_dynamic_ports<output_ports>();
                 }
 
                 atomic(const std::string& model_id, Args&&... args) : ATOMIC<TIME>(std::forward<Args>(args)...) {
-                    static_assert((bool)cadmium::concept::is_atomic<ATOMIC>::value, "This is not an atomic model");
-                    cadmium::concept::pdevs::atomic_model_assert<ATOMIC>();
+                    static_assert((bool)cadmium::model_checks::is_atomic<ATOMIC>::value, "This is not an atomic model");
+                    cadmium::model_checks::pdevs::atomic_model_assert<ATOMIC>();
                     _id = model_id;
                     _input_ports = cadmium::dynamic::modeling::create_dynamic_ports<input_ports>();
                     _output_ports = cadmium::dynamic::modeling::create_dynamic_ports<output_ports>();

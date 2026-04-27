@@ -50,5 +50,5 @@ struct floating_generator : public floating_generator_base<TIME> {
 
 
 int main() {
-    cadmium::concept::pdevs::atomic_model_assert<floating_generator>();
+    cadmium::model_checks::pdevs::atomic_model_assert<floating_generator>();
 }

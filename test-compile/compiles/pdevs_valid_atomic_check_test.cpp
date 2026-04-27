@@ -57,5 +57,5 @@ struct valid_atomic_model
 };
 
 int main(){
-    cadmium::concept::pdevs::atomic_model_assert<valid_atomic_model>();
+    cadmium::model_checks::pdevs::atomic_model_assert<valid_atomic_model>();
 }

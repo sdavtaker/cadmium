@@ -75,7 +75,7 @@ namespace cadmium {
         struct coordinate_tuple_impl {
             template<typename T>
             using current=typename std::tuple_element<S - 1, MT<T>>::type;
-            using current_coordinated=typename std::conditional<cadmium::concept::is_atomic<current>::value(), simulator<current, TIME, LOGGER>, coordinator<current, TIME, LOGGER>>::type;
+            using current_coordinated=typename std::conditional<cadmium::model_checks::is_atomic<current>::value(), simulator<current, TIME, LOGGER>, coordinator<current, TIME, LOGGER>>::type;
             using type=typename coordinate_tuple_impl<TIME, MT, S - 1, LOGGER, current_coordinated, COS...>::type;
         };
 

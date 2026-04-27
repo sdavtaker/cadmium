@@ -50,6 +50,6 @@ template<typename TIME>
 using C2=cadmium::modeling::pdevs::coupled_model<TIME, input_ports, output_ports, submodels, EICs, EOCs, ICs>;
 
 int main(){
-    cadmium::concept::pdevs::coupled_model_assert<C2>();
+    cadmium::model_checks::pdevs::coupled_model_assert<C2>();
     return 0;
 }

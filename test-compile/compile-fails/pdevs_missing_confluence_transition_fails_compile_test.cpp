@@ -56,5 +56,5 @@ struct atomic_model_missing_confluence_function
 };
 
 int main(){
-    cadmium::concept::pdevs::atomic_model_assert<atomic_model_missing_confluence_function>();
+    cadmium::model_checks::pdevs::atomic_model_assert<atomic_model_missing_confluence_function>();
 }

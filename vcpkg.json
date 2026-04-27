@@ -1,0 +1,10 @@
+{
+    "name": "cadmium",
+    "version": "0.2.9",
+    "dependencies": [
+        "boost-any",
+        "boost-functional",
+        "boost-type-index",
+        "catch2"
+    ]
+}

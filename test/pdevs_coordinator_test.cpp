@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_SUITE(pdevs_coordinator_test_suite)
     };
 
     BOOST_AUTO_TEST_CASE(pdevs_coordinator_empty_coupled_is_not_atomic_test) {
-        BOOST_CHECK(!cadmium::concept::is_atomic<empty_coupled_model::type>::value());
+        BOOST_CHECK(!cadmium::model_checks::is_atomic<empty_coupled_model::type>::value());
     }
 
 /**

@@ -63,5 +63,5 @@ struct devs_atomic_model_missing_state_variable {
 };
 
 int main() {
-    cadmium::concept::pdevs::atomic_model_assert<devs_atomic_model_missing_state_variable>();
+    cadmium::model_checks::pdevs::atomic_model_assert<devs_atomic_model_missing_state_variable>();
 }

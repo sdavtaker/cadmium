@@ -90,6 +90,6 @@ using C_top=cadmium::modeling::pdevs::coupled_model<TIME, input_ports_top, outpu
 
 
 int main() {
-    cadmium::concept::pdevs::coupled_model_assert<C_top>();
+    cadmium::model_checks::pdevs::coupled_model_assert<C_top>();
     return 0;
 }

@@ -33,7 +33,7 @@
 #include<cadmium/modeling/ports.hpp>
 #include<type_traits>
 
-namespace cadmium::concept {
+namespace cadmium::model_checks {
     //static assert over the EIC descriptions
     template<typename IN, typename EICs, int S>
     struct assert_each_eic {
@@ -182,7 +182,7 @@ namespace cadmium::concept {
 
             static constexpr void check() {
                 if constexpr (sizeof(test<MODEL>(0)) == sizeof(atomic_detected)) {
-                    cadmium::concept::pdevs::atomic_model_float_time_assert<MODEL>();
+                    cadmium::model_checks::pdevs::atomic_model_float_time_assert<MODEL>();
                 } else {
                     coupled_model_float_time_assert<MODEL>();
                 }

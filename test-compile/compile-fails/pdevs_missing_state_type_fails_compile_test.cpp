@@ -62,5 +62,5 @@ struct devs_atomic_model_missing_state_type_declaration {
 };
 
 int main() {
-    cadmium::concept::pdevs::atomic_model_assert<devs_atomic_model_missing_state_type_declaration>();
+    cadmium::model_checks::pdevs::atomic_model_assert<devs_atomic_model_missing_state_type_declaration>();
 }

@@ -43,7 +43,7 @@ BOOST_AUTO_TEST_SUITE( pdevs_basic_models_suite )
         using floating_accumulator_defs=cadmium::basic_models::pdevs::accumulator_defs<float>;
 
         BOOST_AUTO_TEST_CASE( it_is_atomic_test ){
-            BOOST_CHECK(cadmium::concept::is_atomic<floating_accumulator>::value());
+            BOOST_CHECK(cadmium::model_checks::is_atomic<floating_accumulator>::value());
         }
 
         BOOST_AUTO_TEST_CASE( it_is_constructable_test )

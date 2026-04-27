@@ -61,5 +61,5 @@ struct valid_atomic_with_multiple_ports
 };
 
 int main(){
-    cadmium::concept::pdevs::atomic_model_assert<valid_atomic_with_multiple_ports>();
+    cadmium::model_checks::pdevs::atomic_model_assert<valid_atomic_with_multiple_ports>();
 }

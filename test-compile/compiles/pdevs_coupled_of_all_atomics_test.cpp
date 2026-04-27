@@ -32,6 +32,6 @@
 #include <cadmium/concept/coupled_model_assert.hpp>
 
 int main(){
-    cadmium::concept::pdevs::coupled_model_assert<coupled_of_atomics>();
+    cadmium::model_checks::pdevs::coupled_model_assert<coupled_of_atomics>();
     return 0;
 }
