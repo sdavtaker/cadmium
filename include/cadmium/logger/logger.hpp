@@ -30,167 +30,90 @@
 #include <sstream>
 #include <iostream>
 
-/**
-  * Logging concepts
-  * A logger source is where information of potential interest is provided to the logger.
-  *   Syntax is similar to IOstream using operator<<.
-  *   In addition to the information to log, a set of identifiers is provided to decide where to route it.
-  * A filter makes decisions, based in the set of identifiers provided by the log source, to effectively log the information.
-  *   We filter at compile time to reduce any undecired logging overhead.
-  * A formatter transforms the information that was not filtered out into a log record.
-  * A sink provides the way to move formated log records to its final destination.
-  *
-  * Expected usage
-  *   This logger is not a generic implementation to use in any system. In the contrary, it tries to exploit
-  *   particularities of Cadmium simulator to reduce overhead.
-  *
-  * Assumptions at this stage
-  *   All log sources are well-known (runner, coordinator, simulator), and there is not point of extension.
-  *   Each introduction of log source information, if not filtered out, will produce one log record.
-  *   All possible identifier are known.
-  *
-  * Future additions
-  *   We will like to allow an extension for model specific log sources and filters.
-  */
-
-
 namespace cadmium {
     namespace logger {
 
-        //log sources are identified as childs of this class
         struct logger_source{};
-        //log events are identified as childs of this class
         struct logger_event{};
 
-        //event identifiers for coordinators
-        struct coor_info_init : public cadmium::logger::logger_event{};
-        struct coor_info_collect : public cadmium::logger::logger_event{};
-        struct coor_routing_collect : public cadmium::logger::logger_event{};
-        struct coor_routing_collect_ic : public cadmium::logger::logger_event{};
-        struct coor_routing_collect_eic : public cadmium::logger::logger_event{};
-        struct coor_routing_collect_eoc : public cadmium::logger::logger_event{};
-        struct coor_info_advance : public cadmium::logger::logger_event{};
-        struct coor_routing_ic_collect : public cadmium::logger::logger_event{};
-        struct coor_routing_eic_collect : public cadmium::logger::logger_event{};
-        struct coor_routing_eoc_collect : public cadmium::logger::logger_event{};
+        // Event tags — coordinators
+        struct coor_info_init             : public logger_event{};
+        struct coor_info_collect          : public logger_event{};
+        struct coor_routing_collect       : public logger_event{};
+        struct coor_routing_collect_ic    : public logger_event{};
+        struct coor_routing_collect_eic   : public logger_event{};
+        struct coor_routing_collect_eoc   : public logger_event{};
+        struct coor_info_advance          : public logger_event{};
+        struct coor_routing_ic_collect    : public logger_event{};
+        struct coor_routing_eic_collect   : public logger_event{};
+        struct coor_routing_eoc_collect   : public logger_event{};
 
-        //event identifiers for simulators
-        struct sim_info_init : public cadmium::logger::logger_event{};
-        struct sim_state : public cadmium::logger::logger_event{};
-        struct sim_info_collect : public cadmium::logger::logger_event{};
-        struct sim_messages_collect : public cadmium::logger::logger_event{};
-        struct sim_info_advance : public cadmium::logger::logger_event{};
-        struct sim_local_time : public cadmium::logger::logger_event{};
+        // Event tags — simulators
+        struct sim_info_init              : public logger_event{};
+        struct sim_state                  : public logger_event{};
+        struct sim_info_collect           : public logger_event{};
+        struct sim_messages_collect       : public logger_event{};
+        struct sim_info_advance           : public logger_event{};
+        struct sim_local_time             : public logger_event{};
 
-        //event identifiers for runner
-        struct run_global_time : public cadmium::logger::logger_event{};
-        struct run_info : public cadmium::logger::logger_event{};
+        // Event tags — runner
+        struct run_global_time            : public logger_event{};
+        struct run_info                   : public logger_event{};
 
+        // Source (filter) tags
+        struct logger_info                : public logger_source{};
+        struct logger_debug               : public logger_source{};
+        struct logger_state               : public logger_source{};
+        struct logger_messages            : public logger_source{};
+        struct logger_message_routing     : public logger_source{};
+        struct logger_global_time         : public logger_source{};
+        struct logger_local_time          : public logger_source{};
 
-        //source identifiers
-        struct logger_info : public cadmium::logger::logger_source{};
-        struct logger_debug : public cadmium::logger::logger_source{};
-        struct logger_state : public cadmium::logger::logger_source{};
-        struct logger_messages : public cadmium::logger::logger_source{};
-        struct logger_message_routing : public cadmium::logger::logger_source{};
-        struct logger_global_time : public cadmium::logger::logger_source{};
-
-        struct logger_local_time :  public cadmium::logger::logger_source{};
+        // Each formatter method is now:
+        //   template<typename SINK> static void event_name(args...) { ... }
+        // The formatter owns the output mechanism — SINK-based or spdlog-based.
 
         template<typename LOGGER_SOURCE, class FORMATTER, typename SINK_PROVIDER>
-        struct logger{
+        struct logger {
             template<typename DECLARED_SOURCE, typename EVENT, typename... PARAMs>
             static void log(const PARAMs&... ps) {
-                if constexpr (std::is_same<LOGGER_SOURCE, DECLARED_SOURCE>::value) {
-                    if constexpr (std::is_same<EVENT, cadmium::logger::coor_info_init>::value) {
-                        SINK_PROVIDER::sink() << FORMATTER::coor_info_init(ps...);
-                        SINK_PROVIDER::sink() << std::endl;
-                    }
-
-                    if constexpr (std::is_same<EVENT, cadmium::logger::coor_info_collect>::value) {
-                        SINK_PROVIDER::sink() << FORMATTER::coor_info_collect(ps...);
-                        SINK_PROVIDER::sink() << std::endl;
-                    }
-
-                    if constexpr (std::is_same<EVENT, cadmium::logger::coor_routing_collect>::value) {
-                        SINK_PROVIDER::sink() << FORMATTER::coor_routing_collect(ps...);
-                        SINK_PROVIDER::sink() << std::endl;
-                    }
-
-                    if constexpr (std::is_same<EVENT, cadmium::logger::coor_routing_collect_ic>::value) {
-                        SINK_PROVIDER::sink() << FORMATTER::coor_routing_collect_ic(ps...);
-                        SINK_PROVIDER::sink() << std::endl;
-                    }
-
-                    if constexpr (std::is_same<EVENT, cadmium::logger::coor_routing_collect_eic>::value) {
-                        SINK_PROVIDER::sink() << FORMATTER::coor_routing_collect_eic(ps...);
-                        SINK_PROVIDER::sink() << std::endl;
-                    }
-
-                    if constexpr (std::is_same<EVENT, cadmium::logger::coor_routing_collect_eoc>::value) {
-                        SINK_PROVIDER::sink() << FORMATTER::coor_routing_collect_eoc(ps...);
-                        SINK_PROVIDER::sink() << std::endl;
-                    }
-
-                    if constexpr (std::is_same<EVENT, cadmium::logger::coor_info_advance>::value) {
-                        SINK_PROVIDER::sink() << FORMATTER::coor_info_advance(ps...);
-                        SINK_PROVIDER::sink() << std::endl;
-                    }
-
-                    if constexpr (std::is_same<EVENT, cadmium::logger::coor_routing_ic_collect>::value) {
-                        SINK_PROVIDER::sink() << FORMATTER::coor_routing_ic_collect(ps...);
-                        SINK_PROVIDER::sink() << std::endl;
-                    }
-
-                    if constexpr (std::is_same<EVENT, cadmium::logger::coor_routing_eic_collect>::value) {
-                        SINK_PROVIDER::sink() << FORMATTER::coor_routing_eic_collect(ps...);
-                        SINK_PROVIDER::sink() << std::endl;
-                    }
-
-                    if constexpr (std::is_same<EVENT, cadmium::logger::coor_routing_eoc_collect>::value) {
-                        SINK_PROVIDER::sink() << FORMATTER::coor_routing_eoc_collect(ps...);
-                        SINK_PROVIDER::sink() << std::endl;
-                    }
-
-                    if constexpr (std::is_same<EVENT, cadmium::logger::sim_info_init>::value) {
-                        SINK_PROVIDER::sink() << FORMATTER::sim_info_init(ps...);
-                        SINK_PROVIDER::sink() << std::endl;
-                    }
-
-                    if constexpr (std::is_same<EVENT, cadmium::logger::sim_state>::value) {
-                        SINK_PROVIDER::sink() << FORMATTER::sim_state(ps...);
-                        SINK_PROVIDER::sink() << std::endl;
-                    }
-
-                    if constexpr (std::is_same<EVENT, cadmium::logger::sim_info_collect>::value) {
-                        SINK_PROVIDER::sink() << FORMATTER::sim_info_collect(ps...);
-                        SINK_PROVIDER::sink() << std::endl;
-                    }
-
-                    if constexpr (std::is_same<EVENT, cadmium::logger::sim_messages_collect>::value) {
-                        SINK_PROVIDER::sink() << FORMATTER::sim_messages_collect(ps...);
-                        SINK_PROVIDER::sink() << std::endl;
-                    }
-
-                    if constexpr (std::is_same<EVENT, cadmium::logger::sim_info_advance>::value) {
-                        SINK_PROVIDER::sink() << FORMATTER::sim_info_advance(ps...);
-                        SINK_PROVIDER::sink() << std::endl;
-                    }
-
-                    if constexpr (std::is_same<EVENT, cadmium::logger::sim_local_time>::value) {
-                        SINK_PROVIDER::sink() << FORMATTER::sim_local_time(ps...);
-                        SINK_PROVIDER::sink() << std::endl;
-                    }
-
-                    if constexpr (std::is_same<EVENT, cadmium::logger::run_global_time>::value) {
-                        SINK_PROVIDER::sink() << FORMATTER::run_global_time(ps...);
-                        SINK_PROVIDER::sink() << std::endl;
-                    }
-
-                    if constexpr (std::is_same<EVENT, cadmium::logger::run_info>::value) {
-                        SINK_PROVIDER::sink() << FORMATTER::run_info(ps...);
-                        SINK_PROVIDER::sink() << std::endl;
-                    }
+                if constexpr (std::is_same_v<LOGGER_SOURCE, DECLARED_SOURCE>) {
+                    if constexpr (std::is_same_v<EVENT, coor_info_init>)
+                        FORMATTER::template coor_info_init<SINK_PROVIDER>(ps...);
+                    else if constexpr (std::is_same_v<EVENT, coor_info_collect>)
+                        FORMATTER::template coor_info_collect<SINK_PROVIDER>(ps...);
+                    else if constexpr (std::is_same_v<EVENT, coor_routing_collect>)
+                        FORMATTER::template coor_routing_collect<SINK_PROVIDER>(ps...);
+                    else if constexpr (std::is_same_v<EVENT, coor_routing_collect_ic>)
+                        FORMATTER::template coor_routing_collect_ic<SINK_PROVIDER>(ps...);
+                    else if constexpr (std::is_same_v<EVENT, coor_routing_collect_eic>)
+                        FORMATTER::template coor_routing_collect_eic<SINK_PROVIDER>(ps...);
+                    else if constexpr (std::is_same_v<EVENT, coor_routing_collect_eoc>)
+                        FORMATTER::template coor_routing_collect_eoc<SINK_PROVIDER>(ps...);
+                    else if constexpr (std::is_same_v<EVENT, coor_info_advance>)
+                        FORMATTER::template coor_info_advance<SINK_PROVIDER>(ps...);
+                    else if constexpr (std::is_same_v<EVENT, coor_routing_ic_collect>)
+                        FORMATTER::template coor_routing_ic_collect<SINK_PROVIDER>(ps...);
+                    else if constexpr (std::is_same_v<EVENT, coor_routing_eic_collect>)
+                        FORMATTER::template coor_routing_eic_collect<SINK_PROVIDER>(ps...);
+                    else if constexpr (std::is_same_v<EVENT, coor_routing_eoc_collect>)
+                        FORMATTER::template coor_routing_eoc_collect<SINK_PROVIDER>(ps...);
+                    else if constexpr (std::is_same_v<EVENT, sim_info_init>)
+                        FORMATTER::template sim_info_init<SINK_PROVIDER>(ps...);
+                    else if constexpr (std::is_same_v<EVENT, sim_state>)
+                        FORMATTER::template sim_state<SINK_PROVIDER>(ps...);
+                    else if constexpr (std::is_same_v<EVENT, sim_info_collect>)
+                        FORMATTER::template sim_info_collect<SINK_PROVIDER>(ps...);
+                    else if constexpr (std::is_same_v<EVENT, sim_messages_collect>)
+                        FORMATTER::template sim_messages_collect<SINK_PROVIDER>(ps...);
+                    else if constexpr (std::is_same_v<EVENT, sim_info_advance>)
+                        FORMATTER::template sim_info_advance<SINK_PROVIDER>(ps...);
+                    else if constexpr (std::is_same_v<EVENT, sim_local_time>)
+                        FORMATTER::template sim_local_time<SINK_PROVIDER>(ps...);
+                    else if constexpr (std::is_same_v<EVENT, run_global_time>)
+                        FORMATTER::template run_global_time<SINK_PROVIDER>(ps...);
+                    else if constexpr (std::is_same_v<EVENT, run_info>)
+                        FORMATTER::template run_info<SINK_PROVIDER>(ps...);
                 }
             }
         };
@@ -199,32 +122,29 @@ namespace cadmium {
         struct multilogger_impl;
 
         template<typename L, typename... LS>
-        struct multilogger_impl<L, LS...>{
+        struct multilogger_impl<L, LS...> {
             template<typename DECLARED_SOURCE, typename EVENT, typename... PARAMs>
             static void log(const PARAMs&... ps) {
                 L::template log<DECLARED_SOURCE, EVENT, PARAMs...>(ps...);
-                //recurse
                 multilogger_impl<LS...>::template log<DECLARED_SOURCE, EVENT, PARAMs...>(ps...);
             }
         };
 
         template<>
-        struct multilogger_impl<>{
+        struct multilogger_impl<> {
             template<typename DECLARED_SOURCE, typename EVENT, typename... PARAMs>
-            static void log(const PARAMs&... ps) {
-                //nothing to do
-            }
+            static void log(const PARAMs&...) {}
         };
 
-
         template<typename... LS>
-        struct multilogger{
+        struct multilogger {
             template<typename DECLARED_SOURCE, typename EVENT, typename... PARAMs>
             static void log(const PARAMs&... ps) {
                 multilogger_impl<LS...>::template log<DECLARED_SOURCE, EVENT, PARAMs...>(ps...);
             }
         };
-    }
-}
+
+    } // namespace logger
+} // namespace cadmium
 
 #endif // LOGGER_HPP

@@ -2,6 +2,7 @@
     "name": "cadmium",
     "version": "0.2.9",
     "dependencies": [
-        "catch2"
+        "catch2",
+        "spdlog"
     ]
 }

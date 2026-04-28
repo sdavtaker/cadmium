@@ -15,6 +15,8 @@ endif()
 # cadmium INTERFACE library
 # ----------------------------------------------------------------------------
 
+find_package(spdlog CONFIG REQUIRED)
+
 add_library(cadmium INTERFACE)
 add_library(cadmium::cadmium ALIAS cadmium)
 
@@ -25,6 +27,7 @@ target_include_directories(cadmium INTERFACE
 
 target_compile_features(cadmium INTERFACE cxx_std_23)
 target_compile_options(cadmium INTERFACE -Wall -Wextra -pedantic)
+target_link_libraries(cadmium INTERFACE spdlog::spdlog)
 
 # ----------------------------------------------------------------------------
 # Examples (pdevs only)

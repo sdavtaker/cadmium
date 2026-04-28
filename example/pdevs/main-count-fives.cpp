@@ -106,7 +106,7 @@ using top_ic=std::tuple<
 template<typename TIME>
 using top_model=cadmium::modeling::pdevs::coupled_model<TIME, empty_iports, top_oports, top_submodels, empty_eic, top_eoc, top_ic>;
 
-using messages_logger=cadmium::logger::logger<cadmium::logger::logger_message_routing, cadmium::logger::verbatim_formatter, cadmium::logger::cout_sink_provider>;
+using messages_logger=cadmium::logger::logger<cadmium::logger::logger_message_routing, cadmium::logger::formatter<float>, cadmium::logger::cout_sink_provider>;
 
 //LOG ALL TO COUT
 using namespace cadmium::logger;

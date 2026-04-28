@@ -27,237 +27,279 @@
 #ifndef COMMON_LOGGERS_HPP
 #define COMMON_LOGGERS_HPP
 
+#include <sstream>
+#include <string>
+
+#include <cadmium/logger/cadmium_log.hpp>
 #include <cadmium/logger/logger.hpp>
 #include <cadmium/logger/common_loggers_helpers.hpp>
 
 namespace cadmium {
     namespace logger {
 
-        //Commmon sink providers
-        struct cout_sink_provider{
-            static std::ostream& sink(){
-                return std::cout;
-            }
+        struct cout_sink_provider {
+            static std::ostream& sink() { return std::cout; }
         };
-        struct cerr_sink_provider{
-            static std::ostream& sink(){
-                return std::cerr;
-            }
+        struct cerr_sink_provider {
+            static std::ostream& sink() { return std::cerr; }
         };
 
-        //traits for helping with the verbatim formatter.
-        template<typename...>
-        using void_t = void; //until C++17 is around
+        // No-op logger: source never matches, body never instantiated.
+        struct not_matching_source : public logger_source {};
 
-        template<typename, typename = void>
-        struct is_callable : std::false_type {};
-
-        template<typename F, typename... Args>
-        struct is_callable<F(Args...), void_t<decltype(std::declval<F>()(std::declval<Args>()...))>> : std::true_type {};
-
-        template<typename E>
-        constexpr auto is_callable_v = is_callable<E>::value;
-
-        //Common formatters
-        /** verbatim_formater
-          *
-          * if first param is callable it is used to convert all other params into streamable content
-          * else introduces every param into the stream
-          */
-
-        //formatter for verbatim, takes a function in first param and applies it to all other params
-        // or concatenated outputs
-        struct verbatim_formatter {
-            template<typename F, typename... Args>
-            static auto format(std::ostream& os, F func, Args&&... args) -> std::enable_if_t<is_callable_v<F(Args...)>> {
-                os << func(std::forward<Args>(args)...);
-                os << std::endl;
-            }
-
-
-            template<typename T, typename... TS>
-            static auto format(std::ostream& os, T&& value, TS&&... ts) -> std::enable_if_t<!is_callable_v<T(TS...)>> {
-                os << std::forward<T>(value);
-                verbatim_formatter::format(os, std::forward<TS>(ts)...);
-            }
-
-           static void format(std::ostream& os){
-                os << std::endl;
-           }
+        // Minimal no-op formatter for not_logger — methods are never called in practice.
+        struct noop_formatter {
+            template<typename SINK> static void coor_info_init(...)          {}
+            template<typename SINK> static void coor_info_collect(...)       {}
+            template<typename SINK> static void coor_routing_collect(...)    {}
+            template<typename SINK> static void coor_routing_collect_ic(...) {}
+            template<typename SINK> static void coor_routing_collect_eic(...) {}
+            template<typename SINK> static void coor_routing_collect_eoc(...) {}
+            template<typename SINK> static void coor_info_advance(...)       {}
+            template<typename SINK> static void coor_routing_ic_collect(...) {}
+            template<typename SINK> static void coor_routing_eic_collect(...) {}
+            template<typename SINK> static void coor_routing_eoc_collect(...) {}
+            template<typename SINK> static void sim_info_init(...)           {}
+            template<typename SINK> static void sim_state(...)               {}
+            template<typename SINK> static void sim_info_collect(...)        {}
+            template<typename SINK> static void sim_messages_collect(...)    {}
+            template<typename SINK> static void sim_info_advance(...)        {}
+            template<typename SINK> static void sim_local_time(...)          {}
+            template<typename SINK> static void run_global_time(...)         {}
+            template<typename SINK> static void run_info(...)                {}
         };
 
+        using not_logger = logger<not_matching_source, noop_formatter, cout_sink_provider>;
 
-        //a logger that should not match any source, mostly for testing and debug purposes
-        struct not_matching_source :public logger_source{};
-        using not_logger=logger<not_matching_source, verbatim_formatter, cout_sink_provider>;
+        // ── Ostream-based formatter (human-readable, for tests and debugging) ──────
 
         template<typename TIME>
         struct formatter {
 
-            static std::string coor_info_init(TIME t, const std::string& model_id) {
-                std::ostringstream oss;
-                oss << "Coordinator for model ";
-                oss << model_id;
-                oss << " initialized to time ";
-                oss << t;
-                return oss.str();
-            };
-
-            static std::string coor_info_collect(TIME t, const std::string& model_id) {
-                std::ostringstream oss;
-                oss << "Coordinator for model ";
-                oss << model_id;
-                oss << " collecting output at time ";
-                oss << t;
-                return oss.str();
-            };
-
-            static std::string coor_info_advance(const TIME& from, const TIME& to, const std::string& model_id) {
-                std::ostringstream oss;
-                oss << "Coordinator for model ";
-                oss << model_id;
-                oss << " advancing simulation from time ";
-                oss << from;
-                oss << " to ";
-                oss << to;
-                return oss.str();
-            };
-
-            static std::string coor_routing_eoc_collect(const std::string& model_id) {
-                std::ostringstream oss;
-                oss << "EOC for model ";
-                oss << model_id;
-                return oss.str();
-            };
-
-            static std::string coor_routing_ic_collect(const std::string& model_id) {
-                std::ostringstream oss;
-                oss << "IC for model ";
-                oss << model_id;
-                return oss.str();
-            };
-
-            static std::string coor_routing_eic_collect(const std::string& model_id) {
-                std::ostringstream oss;
-                oss << "EIC for model ";
-                oss << model_id;
-                return oss.str();
-            };
-
-            static std::string coor_routing_collect_eoc(const std::string& from_messages, const std::string& to_messages, const std::string& from_port, const std::string& to_port, const std::string& submodel_from) {
-                std::ostringstream oss;
-                oss << " in port ";
-                oss << to_port;
-                oss << " has ";
-                oss << to_messages;
-                oss << " routed from ";
-                oss << from_port;
-                oss << " of model ";
-                oss << submodel_from;
-                oss << " with messages ";
-                oss << from_messages;
-                return oss.str();
-            };
-
-            static std::string coor_routing_collect_ic(const std::string& from_messages, const std::string& to_messages, const std::string& from_port, const std::string& from_model, const std::string& to_port, const std::string& to_model) {
-                std::ostringstream oss;
-                oss << " in port ";
-                oss << to_port;
-                oss << " of model ";
-                oss << to_model;
-                oss << " has ";
-                oss << to_messages;
-                oss << " routed from ";
-                oss << from_port;
-                oss << " of model ";
-                oss << from_model;
-                oss << " with messages ";
-                oss << from_messages;
-                return oss.str();
-            };
-
-            static std::string coor_routing_collect_eic(const std::string& from_messages, const std::string& to_messages, const std::string& to_port, const std::string& to_model, const std::string& from_port) {
-                std::ostringstream oss;
-                oss << " in port ";
-                oss << to_port;
-                oss << " of model ";
-                oss << to_model;
-                oss << " has ";
-                oss << to_messages;
-                oss << " routed from ";
-                oss << from_port;
-                oss << " with messages ";
-                oss << from_messages;
-                return oss.str();
-            };
-
-            static std::string sim_info_init(TIME t, const std::string& model_id) {
-                std::ostringstream oss;
-                oss << "Simulator for model ";
-                oss << model_id;
-                oss << " initialized to time ";
-                oss << t;
-                return oss.str();
+            template<typename SINK>
+            static void coor_info_init(TIME t, const std::string& model_id) {
+                SINK::sink() << "Coordinator for model " << model_id
+                             << " initialized to time " << t << "\n";
             }
 
-            static std::string sim_state(const std::string& state, const std::string& model_id) {
-                std::ostringstream oss;
-                oss << "State for model ";
-                oss << model_id;
-                oss << " is ";
-                oss << state;
-                return oss.str();
-            };
-
-            static std::string sim_info_collect(TIME t, const std::string& model_id) {
-                std::ostringstream oss;
-                oss << "Simulator for model ";
-                oss << model_id;
-                oss << " collecting output at time ";
-                oss << t;
-                return oss.str();
-            };
-
-            static std::string sim_messages_collect(const std::string& messages_by_port, const std::string& model_id) {
-                std::ostringstream oss;
-                oss << messages_by_port;
-                oss << " generated by model ";
-                oss << model_id;
-                return oss.str();
-            };
-
-            static std::string sim_info_advance(const TIME& from, const TIME& to, const std::string& model_id) {
-                std::ostringstream oss;
-                oss << "Simulator for model ";
-                oss << model_id;
-                oss << " advancing simulation from time ";
-                oss << from;
-                oss << " to ";
-                oss << to;
-                return oss.str();
-            };
-
-            static std::string sim_local_time(const TIME& from, const TIME& to, const std::string& model_id) {
-                std::ostringstream oss;
-                oss << "Elapsed in model ";
-                oss << model_id;
-                oss << " is ";
-                oss << (to - from);
-                oss << "s";
-                return oss.str();
-            };
-
-            static TIME run_global_time(const TIME& global_time) {
-                return global_time;
+            template<typename SINK>
+            static void coor_info_collect(TIME t, const std::string& model_id) {
+                SINK::sink() << "Coordinator for model " << model_id
+                             << " collecting output at time " << t << "\n";
             }
 
-            static std::string run_info(const std::string& message) {
-                return message;
+            template<typename SINK>
+            static void coor_info_advance(const TIME& from, const TIME& to,
+                                          const std::string& model_id) {
+                SINK::sink() << "Coordinator for model " << model_id
+                             << " advancing simulation from time " << from
+                             << " to " << to << "\n";
+            }
+
+            template<typename SINK>
+            static void coor_routing_eoc_collect(const std::string& model_id) {
+                SINK::sink() << "EOC for model " << model_id << "\n";
+            }
+
+            template<typename SINK>
+            static void coor_routing_ic_collect(const std::string& model_id) {
+                SINK::sink() << "IC for model " << model_id << "\n";
+            }
+
+            template<typename SINK>
+            static void coor_routing_eic_collect(const std::string& model_id) {
+                SINK::sink() << "EIC for model " << model_id << "\n";
+            }
+
+            template<typename SINK>
+            static void coor_routing_collect(const std::string&, const std::string&,
+                                             const std::string&, const std::string&,
+                                             const std::string&) {}
+            template<typename SINK>
+            static void coor_routing_collect_ic(const std::string&, const std::string&,
+                                                const std::string&, const std::string&,
+                                                const std::string&, const std::string&) {}
+            template<typename SINK>
+            static void coor_routing_collect_eic(const std::string&, const std::string&,
+                                                 const std::string&, const std::string&,
+                                                 const std::string&) {}
+            template<typename SINK>
+            static void coor_routing_collect_eoc(const std::string&, const std::string&,
+                                                 const std::string&, const std::string&,
+                                                 const std::string&) {}
+
+            template<typename SINK>
+            static void sim_info_init(TIME t, const std::string& model_id) {
+                SINK::sink() << "Simulator for model " << model_id
+                             << " initialized to time " << t << "\n";
+            }
+
+            template<typename SINK>
+            static void sim_state(const std::string& state, const std::string& model_id) {
+                SINK::sink() << "State for model " << model_id << " is " << state << "\n";
+            }
+
+            template<typename SINK>
+            static void sim_info_collect(TIME t, const std::string& model_id) {
+                SINK::sink() << "Simulator for model " << model_id
+                             << " collecting output at time " << t << "\n";
+            }
+
+            template<typename SINK>
+            static void sim_messages_collect(const std::string& messages_by_port,
+                                             const std::string& model_id) {
+                SINK::sink() << messages_by_port << " generated by model " << model_id << "\n";
+            }
+
+            template<typename SINK>
+            static void sim_info_advance(const TIME& from, const TIME& to,
+                                         const std::string& model_id) {
+                SINK::sink() << "Simulator for model " << model_id
+                             << " advancing simulation from time " << from
+                             << " to " << to << "\n";
+            }
+
+            template<typename SINK>
+            static void sim_local_time(const TIME& from, const TIME& to,
+                                       const std::string& model_id) {
+                SINK::sink() << "Elapsed in model " << model_id
+                             << " is " << (to - from) << "s\n";
+            }
+
+            template<typename SINK>
+            static void run_global_time(const TIME& t) {
+                SINK::sink() << t << "\n";
+            }
+
+            template<typename SINK>
+            static void run_info(const std::string& message) {
+                SINK::sink() << message << "\n";
             }
         };
 
-    }
-}
+        // ── NDJSON formatter — emits via cadmium::log, SINK is ignored ────────────
 
+        template<typename TIME>
+        struct ndjson_formatter {
+
+            template<typename SINK>
+            static void coor_info_init(const TIME& t, const std::string& model_id) {
+                cadmium::log::emit(cadmium::log::level::debug, "coordinator_init",
+                                   "model=" + model_id,
+                                   cadmium::log::to_sim_double(t));
+            }
+
+            template<typename SINK>
+            static void coor_info_collect(const TIME& t, const std::string& model_id) {
+                cadmium::log::emit(cadmium::log::level::debug, "coordinator_collect",
+                                   "model=" + model_id,
+                                   cadmium::log::to_sim_double(t));
+            }
+
+            template<typename SINK>
+            static void coor_info_advance(const TIME& from, const TIME& to,
+                                          const std::string& model_id) {
+                cadmium::log::emit(cadmium::log::level::debug, "coordinator_advance",
+                                   "model=" + model_id,
+                                   cadmium::log::to_sim_double(to));
+            }
+
+            template<typename SINK>
+            static void coor_routing_eoc_collect(const std::string& model_id) {
+                cadmium::log::emit(cadmium::log::level::debug, "routing_eoc",
+                                   "model=" + model_id);
+            }
+
+            template<typename SINK>
+            static void coor_routing_ic_collect(const std::string& model_id) {
+                cadmium::log::emit(cadmium::log::level::debug, "routing_ic",
+                                   "model=" + model_id);
+            }
+
+            template<typename SINK>
+            static void coor_routing_eic_collect(const std::string& model_id) {
+                cadmium::log::emit(cadmium::log::level::debug, "routing_eic",
+                                   "model=" + model_id);
+            }
+
+            template<typename SINK>
+            static void coor_routing_collect(const std::string&, const std::string&,
+                                             const std::string&, const std::string&,
+                                             const std::string&) {}
+            template<typename SINK>
+            static void coor_routing_collect_ic(const std::string&, const std::string&,
+                                                const std::string&, const std::string&,
+                                                const std::string&, const std::string&) {}
+            template<typename SINK>
+            static void coor_routing_collect_eic(const std::string&, const std::string&,
+                                                 const std::string&, const std::string&,
+                                                 const std::string&) {}
+            template<typename SINK>
+            static void coor_routing_collect_eoc(const std::string&, const std::string&,
+                                                 const std::string&, const std::string&,
+                                                 const std::string&) {}
+
+            template<typename SINK>
+            static void sim_info_init(const TIME& t, const std::string& model_id) {
+                cadmium::log::emit(cadmium::log::level::debug, "simulator_init",
+                                   "model=" + model_id,
+                                   cadmium::log::to_sim_double(t));
+            }
+
+            template<typename SINK>
+            static void sim_state(const std::string& state, const std::string& model_id) {
+                cadmium::log::emit(cadmium::log::level::debug, "simulator_state",
+                                   "model=" + model_id + " state=" + state);
+            }
+
+            template<typename SINK>
+            static void sim_info_collect(const TIME& t, const std::string& model_id) {
+                cadmium::log::emit(cadmium::log::level::debug, "simulator_collect",
+                                   "model=" + model_id,
+                                   cadmium::log::to_sim_double(t));
+            }
+
+            template<typename SINK>
+            static void sim_messages_collect(const std::string& messages_by_port,
+                                             const std::string& model_id) {
+                cadmium::log::emit(cadmium::log::level::debug, "simulator_messages",
+                                   "model=" + model_id + " " + messages_by_port);
+            }
+
+            template<typename SINK>
+            static void sim_info_advance(const TIME& from, const TIME& to,
+                                         const std::string& model_id) {
+                cadmium::log::emit(cadmium::log::level::debug, "simulator_advance",
+                                   "model=" + model_id,
+                                   cadmium::log::to_sim_double(to));
+            }
+
+            template<typename SINK>
+            static void sim_local_time(const TIME& from, const TIME& to,
+                                       const std::string& model_id) {
+                cadmium::log::emit(cadmium::log::level::debug, "simulator_local_time",
+                                   "model=" + model_id);
+            }
+
+            template<typename SINK>
+            static void run_global_time(const TIME& t) {
+                cadmium::log::emit(cadmium::log::level::debug, "simulation_tick", "",
+                                   cadmium::log::to_sim_double(t));
+            }
+
+            template<typename SINK>
+            static void run_info(const std::string& message) {
+                if (message == "Starting run") {
+                    cadmium::log::emit(cadmium::log::level::info, "simulation_start", message);
+                } else if (message == "Finished run") {
+                    cadmium::log::emit(cadmium::log::level::info, "simulation_end", message);
+                } else {
+                    cadmium::log::emit(cadmium::log::level::info, "simulation_info", message);
+                }
+            }
+        };
+
+    } // namespace logger
+} // namespace cadmium
 
 #endif // COMMON_LOGGERS_HPP
