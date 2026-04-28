@@ -46,7 +46,13 @@ option(CADMIUM_BUILD_TESTS "Build tests" OFF)
 if(CADMIUM_BUILD_TESTS)
     find_package(Catch2 CONFIG REQUIRED)
     enable_testing()
-    # Test executables added by migration beads memory-vault-9py and memory-vault-jlw
+
+    # Batch 1: pdevs static engine (memory-vault-9py)
+    foreach(test_name pdevs_simulator_test pdevs_coordinator_test pdevs_runner_test)
+        add_executable(${test_name} test/${test_name}.cpp)
+        target_link_libraries(${test_name} PRIVATE cadmium Catch2::Catch2WithMain)
+        add_test(NAME ${test_name} COMMAND ${test_name})
+    endforeach()
 endif()
 
 # ----------------------------------------------------------------------------
