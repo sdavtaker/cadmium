@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2017, Cristina Ruiz Martin, Laouen Mayal Louan Belloli
+ * Copyright (c) 2017-present, Cristina Ruiz Martin, Laouen Mayal Louan Belloli
  * Carleton University, Universidad de Valladolid
  * All rights reserved.
  *

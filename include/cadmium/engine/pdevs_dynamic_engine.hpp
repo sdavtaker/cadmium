@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2017, Laouen M. L. Belloli
+ * Copyright (c) 2017-present, Laouen M. L. Belloli
  * Carleton University, Universidad de Buenos Aires
  * All rights reserved.
  *
@@ -24,54 +24,26 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CADMIUM_PDEVS_DYNAMIC_ENGINE_HPP
-#define CADMIUM_PDEVS_DYNAMIC_ENGINE_HPP
+#pragma once
 
 #include <cadmium/modeling/dynamic_message_bag.hpp>
-
-#ifdef CADMIUM_EXECUTE_CONCURRENT
-#include <boost/thread/executors/basic_thread_pool.hpp>
-#endif
 
 namespace cadmium {
     namespace dynamic {
         namespace engine {
 
-            /**
-             * @brief Abstract class to allow pointer polymorphism between dynamic::coordinator
-             * and dynamic::atomic
-             *
-             * @tparam TIME
-             */
             template<typename TIME>
             class engine {
             public:
                 virtual void init(TIME initial_time) = 0;
-
-                #ifdef CADMIUM_EXECUTE_CONCURRENT
-                virtual void init(TIME initial_time, boost::basic_thread_pool* threadpool) = 0;
-                #endif
-
-                #ifdef CPU_PARALLEL
-                virtual void init(TIME initial_time, size_t thread_number) = 0;
-                #endif
-
                 virtual std::string get_model_id() const = 0;
-
                 virtual TIME next() const noexcept = 0;
-
-                virtual void collect_outputs(const TIME &t) = 0;
-
+                virtual void collect_outputs(const TIME& t) = 0;
                 virtual cadmium::dynamic::message_bags& outbox() = 0;
-
                 virtual cadmium::dynamic::message_bags& inbox() = 0;
-
-                virtual void advance_simulation(const TIME &t) = 0;
-
-                virtual ~engine(){}
+                virtual void advance_simulation(const TIME& t) = 0;
+                virtual ~engine() {}
             };
         }
     }
 }
-
-#endif //CADMIUM_PDEVS_DYNAMIC_ENGINE_HPP

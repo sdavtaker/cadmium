@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019, Ben Earle
+ * Copyright (c) 2019-present, Ben Earle
  * Carleton University
  * All rights reserved.
  *

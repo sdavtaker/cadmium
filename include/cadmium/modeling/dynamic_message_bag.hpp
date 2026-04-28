@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2017, Laouen M. L. Belloli
+ * Copyright (c) 2017-present, Laouen M. L. Belloli
  * Carleton University, Universidad de Buenos Aires
  * All rights reserved.
  *

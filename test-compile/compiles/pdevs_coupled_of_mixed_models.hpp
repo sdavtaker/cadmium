@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-2019, Damian Vicino
+ * Copyright (c) 2013-present, Damian Vicino
  * Carleton University, Universite de Nice-Sophia Antipolis
  * All rights reserved.
  *
