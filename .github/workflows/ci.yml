@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install GCC 14
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-14 g++-14
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
+
+      - name: Set up vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git $VCPKG_ROOT
+          $VCPKG_ROOT/bootstrap-vcpkg.sh -disableMetrics
+
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/vcpkg/installed
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-${{ runner.os }}-
+
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=g++-14 \
+            -DCADMIUM_BUILD_TESTS=ON \
+            -DCADMIUM_BUILD_EXAMPLES=ON \
+            -DCADMIUM_BUILD_COMPILE_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Run examples
+        run: |
+          mkdir -p example-output
+          build/main-clock          > example-output/main-clock.txt
+          build/main-count-fives    > example-output/main-count-fives.txt
+
+      - name: Validate example output
+        run: |
+          fail=0
+
+          check_nonempty() {
+            local file="$1"
+            if [ ! -s "$file" ]; then
+              echo "FAIL $file: file is empty or missing"
+              fail=1
+            fi
+          }
+
+          check_nonempty example-output/main-clock.txt
+          check_nonempty example-output/main-count-fives.txt
+
+          if [ "$fail" -ne 0 ]; then
+            echo "One or more output validation checks failed."
+            exit 1
+          fi
+          echo "All output validation checks passed."
+
+      - name: Upload example output
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-output
+          path: example-output/
