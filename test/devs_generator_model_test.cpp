@@ -24,68 +24,51 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <catch2/catch_test_macros.hpp>
+#include <stdexcept>
 
-#define BOOST_TEST_DYN_LINK
+#include <cadmium/basic_model/devs/generator.hpp>
+#include <cadmium/concept/concept_helpers.hpp>
+#include <cadmium/modeling/message_box.hpp>
 
-#include<boost/test/unit_test.hpp>
+const float init_period = 0.1f;
+const float init_output_message = 1.0f;
 
-#include<cadmium/modeling/message_box.hpp>
-#include<cadmium/basic_model/devs/generator.hpp>
-#include<cadmium/concept/concept_helpers.hpp>
+template<typename TIME>
+using floating_generator_base = cadmium::basic_models::devs::generator<float, TIME>;
+using floating_generator_defs = cadmium::basic_models::devs::generator_defs<float>;
 
-#include<stdexcept>
+template<typename TIME>
+struct floating_generator : public floating_generator_base<TIME> {
+    float period() const override { return init_period; }
+    float output_message() const override { return init_output_message; }
+};
 
-BOOST_AUTO_TEST_SUITE(devs_basic_models_suite)
-    BOOST_AUTO_TEST_SUITE(devs_generator_suite)
+TEST_CASE("devs generator is atomic", "[devs][generator]") {
+    CHECK(cadmium::model_checks::is_atomic<floating_generator>::value());
+}
 
-        //Creating a generator instance from the meta model
-        const float init_period = 0.1f;
-        const float init_output_message = 1.0f;
-        template<typename TIME>
-        using floating_generator_base=cadmium::basic_models::devs::generator<float, TIME>;
-        using floating_generator_defs=cadmium::basic_models::devs::generator_defs<float>;
+TEST_CASE("devs generator is constructable", "[devs][generator]") {
+    CHECK_NOTHROW(floating_generator<float>{});
+}
 
-        template<typename TIME>
-        struct floating_generator : public floating_generator_base<TIME> {
-            float period() const override {
-                return init_period;
-            }
+TEST_CASE("devs generator time advance is constant across internal transitions", "[devs][generator]") {
+    auto g = floating_generator<float>();
+    CHECK(g.time_advance() == init_period);
+    g.internal_transition();
+    CHECK(g.time_advance() == init_period);
+}
 
-            float output_message() const override {
-                return init_output_message;
-            }
-        };
+TEST_CASE("devs generator throws on external transition", "[devs][generator]") {
+    auto g = floating_generator<float>();
+    typename cadmium::make_message_box<floating_generator<float>::input_ports>::type input;
+    CHECK_THROWS_AS(g.external_transition(5.0, input), std::logic_error);
+}
 
-
-        BOOST_AUTO_TEST_CASE(it_is_atomic_test) {
-            BOOST_CHECK(cadmium::model_checks::is_atomic<floating_generator>::value());
-        }
-
-        BOOST_AUTO_TEST_CASE(it_is_constructable_test) {
-            BOOST_REQUIRE_NO_THROW(floating_generator<float>{});
-        }
-
-        BOOST_AUTO_TEST_CASE(time_advance_is_the_init_one_even_after_internal_transition_test) {
-            auto g = floating_generator<float>();
-            BOOST_CHECK_EQUAL(init_period, g.time_advance());
-            g.internal_transition();
-            BOOST_CHECK_EQUAL(init_period, g.time_advance());
-        }
-
-        BOOST_AUTO_TEST_CASE(it_throws_on_call_to_external_transition_test) {
-            auto g = floating_generator<float>();
-            typename cadmium::make_message_box<floating_generator<float>::input_ports>::type input;
-            BOOST_CHECK_THROW(g.external_transition(5.0, input), std::logic_error);
-        }
-
-        BOOST_AUTO_TEST_CASE(output_function_returns_init_message_test) {
-            auto g = floating_generator<float>();
-            auto o = g.output();
-            auto o_m = cadmium::get_message<typename floating_generator_defs::out>(o);
-            BOOST_CHECK(o_m.has_value());
-            BOOST_CHECK_EQUAL(init_output_message, o_m.value());
-        }
-
-    BOOST_AUTO_TEST_SUITE_END()
-
-BOOST_AUTO_TEST_SUITE_END()
+TEST_CASE("devs generator output returns configured message", "[devs][generator]") {
+    auto g = floating_generator<float>();
+    auto o = g.output();
+    auto o_m = cadmium::get_message<floating_generator_defs::out>(o);
+    REQUIRE(o_m.has_value());
+    CHECK(o_m.value() == init_output_message);
+}

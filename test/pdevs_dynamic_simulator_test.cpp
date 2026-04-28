@@ -24,118 +24,101 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-#define BOOST_TEST_DYN_LINK
-#include <boost/test/unit_test.hpp>
-#include <cadmium/logger/tuple_to_ostream.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <any>
+#include <limits>
 
 #include <cadmium/basic_model/pdevs/accumulator.hpp>
-#include <cadmium/basic_model/pdevs/generator.hpp>
-#include <cadmium/modeling/dynamic_message_bag.hpp>
-#include <cadmium/modeling/dynamic_atomic.hpp>
 #include <cadmium/engine/pdevs_dynamic_simulator.hpp>
+#include <cadmium/logger/tuple_to_ostream.hpp>
+#include <cadmium/modeling/dynamic_atomic.hpp>
+#include <cadmium/modeling/dynamic_message_bag.hpp>
 #include <cadmium/modeling/dynamic_model_translator.hpp>
 
-
 template<typename TIME>
-using int_accumulator=cadmium::basic_models::pdevs::accumulator<int, TIME>;
-using int_accumulator_defs=cadmium::basic_models::pdevs::accumulator_defs<int>;
+using int_accumulator = cadmium::basic_models::pdevs::accumulator<int, TIME>;
+using int_accumulator_defs = cadmium::basic_models::pdevs::accumulator_defs<int>;
 
-BOOST_AUTO_TEST_SUITE( pdevs_dynamic_simulator_suite )
+using input_ports = int_accumulator<float>::input_ports;
+using in_bags_type = typename cadmium::make_message_bags<input_ports>::type;
 
-BOOST_AUTO_TEST_SUITE( pdevs_accumulator_suite )
-BOOST_AUTO_TEST_CASE( accumulator_model_dynamic_simulation_test )
-{
-//This test is suppose to pass only in CPP17 compilers, skipping in older compilers
-#if __cplusplus > 201702 && defined (DYNAMIC_ENGINE)
-    //construct a simulator for an accumulator
-    std::shared_ptr<cadmium::dynamic::modeling::atomic_abstract<float>> upModel = cadmium::dynamic::translate::make_dynamic_atomic_model<int_accumulator, float>();
-    cadmium::dynamic::engine::simulator<float, cadmium::logger::not_logger> s(upModel);
-
-    s.init(0.0f);
-
-    BOOST_CHECK(s.next()==std::numeric_limits<float>::infinity());
-
-    using input_ports=int_accumulator<float>::input_ports;
-    using in_bags_type=typename cadmium::make_message_bags<input_ports>::type;
-
-    //crate the map for sending/receiving the messages
-    cadmium::message_bag<int_accumulator_defs::add> bag_0;
-    cadmium::message_bag<int_accumulator_defs::reset> bag_1;
-    cadmium::message_bag<int_accumulator_defs::sum> output;
-
-    bag_0.messages.assign(std::initializer_list<int>{1, 2, 3, 4});
-    bag_1.messages.clear();
-
-    cadmium::dynamic::message_bags input_bags;
-    cadmium::dynamic::message_bags empty_input = cadmium::dynamic::modeling::create_empty_message_bags<in_bags_type>();
-
-    input_bags[typeid(int_accumulator_defs::add)] = bag_0;
-    input_bags[typeid(int_accumulator_defs::reset)] = bag_1;
-
-    //advance simulator
-    s._inbox = input_bags;
-    s.advance_simulation(3.0f);
-    BOOST_CHECK(s.next() == std::numeric_limits<float>::infinity());
-
-    //external input in reset triggers a reset
-    bag_0.messages.clear();
-    bag_1.messages.emplace_back();
-
-    input_bags[typeid(int_accumulator_defs::add)] = bag_0;
-    input_bags[typeid(int_accumulator_defs::reset)] = bag_1;
-
-    s._inbox = input_bags;
-    s.advance_simulation(4.0f); //here time is referring to absolute chronology, we are in simulation context.
-    BOOST_CHECK(s.next() == 4.0f );
-
-    //out provides the accumulated result
-    s.collect_outputs(4.0f);
-    auto o = s.outbox();
-    output = boost::any_cast<cadmium::message_bag<int_accumulator_defs::sum>>(o.at(typeid(int_accumulator_defs::sum)));
-    BOOST_CHECK(output.messages.size() == 1);
-    BOOST_CHECK(output.messages.at(0) == 10);
-
-    s._inbox = empty_input;
-    s.advance_simulation(4.0f);
-    BOOST_CHECK(s.next() == std::numeric_limits<float>::infinity());
-
-    //internal transition resets counter
-    s._inbox = input_bags;
-    s.advance_simulation(5.0f);
-    BOOST_CHECK(s.next() == 5.0f);
-    s.collect_outputs(5.0f);
-    o = s.outbox();
-    output = boost::any_cast<cadmium::message_bag<int_accumulator_defs::sum>>(o.at(typeid(int_accumulator_defs::sum)));
-    BOOST_CHECK(output.messages.size() == 1);
-    BOOST_CHECK(output.messages.at(0) == 0);
-    s._inbox = empty_input;
-    s.advance_simulation(5.0f);
-    BOOST_CHECK(s.next() == std::numeric_limits<float>::infinity());
-
-    //simultaneous external input in both ports increments and schedules reset
-    bag_0.messages.assign(std::initializer_list<int>{1, 2, 3, 4});
-    input_bags[typeid(int_accumulator_defs::add)] = bag_0;
-
-    s._inbox = input_bags;
-    s.advance_simulation(6.0f);
-    BOOST_CHECK(s.next() == 6.0f);
-    s.collect_outputs(6.0f);
-    o = s.outbox();
-    output = boost::any_cast<cadmium::message_bag<int_accumulator_defs::sum>>(o.at(typeid(int_accumulator_defs::sum)));
-    BOOST_CHECK(output.messages.size() == 1);
-    BOOST_CHECK(output.messages.at(0) == 10);
-
-    s._inbox = empty_input;
-    s.advance_simulation(6.0f);
-    BOOST_CHECK(s.next() == std::numeric_limits<float>::infinity());
-#else
-    BOOST_WARN_MESSAGE(false, "Skippping accumulator_model_dynamic_simulation_test test because compiler is not C++17 compliant");
-#endif
+static auto make_sim() {
+    auto model = cadmium::dynamic::translate::make_dynamic_atomic_model<int_accumulator, float>();
+    return cadmium::dynamic::engine::simulator<float, cadmium::logger::not_logger>(model);
 }
 
-BOOST_AUTO_TEST_SUITE_END()
+static cadmium::dynamic::message_bags make_input(std::initializer_list<int> add_vals, bool reset) {
+    cadmium::message_bag<int_accumulator_defs::add>   bag_add;
+    cadmium::message_bag<int_accumulator_defs::reset> bag_reset;
+    bag_add.messages.assign(add_vals);
+    if (reset) bag_reset.messages.emplace_back();
+    cadmium::dynamic::message_bags bags;
+    bags[typeid(int_accumulator_defs::add)]   = bag_add;
+    bags[typeid(int_accumulator_defs::reset)] = bag_reset;
+    return bags;
+}
 
+TEST_CASE("dynamic accumulator simulator initialises passive", "[dynamic][simulator]") {
+    auto s = make_sim();
+    s.init(0.0f);
+    CHECK(s.next() == std::numeric_limits<float>::infinity());
+}
 
-BOOST_AUTO_TEST_SUITE_END()
+TEST_CASE("dynamic accumulator simulator external transition on add stays passive", "[dynamic][simulator]") {
+    auto s = make_sim();
+    s.init(0.0f);
+    s._inbox = make_input({1, 2, 3, 4}, false);
+    s.advance_simulation(3.0f);
+    CHECK(s.next() == std::numeric_limits<float>::infinity());
+}
 
+TEST_CASE("dynamic accumulator simulator reset triggers internal transition", "[dynamic][simulator]") {
+    auto s = make_sim();
+    s.init(0.0f);
+    s._inbox = make_input({1, 2, 3, 4}, false);
+    s.advance_simulation(3.0f);
+    s._inbox = make_input({}, true);
+    s.advance_simulation(4.0f);
+    CHECK(s.next() == 4.0f);
+}
+
+TEST_CASE("dynamic accumulator simulator output is sum of add messages", "[dynamic][simulator]") {
+    auto s = make_sim();
+    s.init(0.0f);
+    s._inbox = make_input({1, 2, 3, 4}, false);
+    s.advance_simulation(3.0f);
+    s._inbox = make_input({}, true);
+    s.advance_simulation(4.0f);
+
+    s.collect_outputs(4.0f);
+    auto o = s.outbox();
+    auto out = std::any_cast<cadmium::message_bag<int_accumulator_defs::sum>>(
+        o.at(typeid(int_accumulator_defs::sum)));
+    REQUIRE(out.messages.size() == 1);
+    CHECK(out.messages.at(0) == 10);
+}
+
+TEST_CASE("dynamic accumulator simulator confluence: add then reset gives correct sum", "[dynamic][simulator]") {
+    auto s = make_sim();
+    s.init(0.0f);
+    s._inbox = make_input({}, true);
+    s.advance_simulation(4.0f);
+
+    in_bags_type empty{};
+    cadmium::dynamic::message_bags empty_dyn =
+        cadmium::dynamic::modeling::create_empty_message_bags<in_bags_type>();
+    s._inbox = empty_dyn;
+    s.advance_simulation(4.0f);
+    CHECK(s.next() == std::numeric_limits<float>::infinity());
+
+    s._inbox = make_input({}, true);
+    s.advance_simulation(5.0f);
+    CHECK(s.next() == 5.0f);
+
+    s.collect_outputs(5.0f);
+    auto o = s.outbox();
+    auto out = std::any_cast<cadmium::message_bag<int_accumulator_defs::sum>>(
+        o.at(typeid(int_accumulator_defs::sum)));
+    REQUIRE(out.messages.size() == 1);
+    CHECK(out.messages.at(0) == 0);
+}

@@ -24,79 +24,46 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-#define BOOST_TEST_DYN_LINK
+#include <catch2/catch_test_macros.hpp>
 #include <sstream>
-#include<boost/test/unit_test.hpp>
-#include <cadmium/logger/logger.hpp>
+
 #include <cadmium/logger/common_loggers.hpp>
+#include <cadmium/logger/logger.hpp>
 
 namespace {
     std::ostringstream oss;
     std::ostringstream oss2;
 
-    struct oss_test_sink_provider{
-        static std::ostream& sink(){
-            return oss;
-        }
-    };
-
-    struct oss_test_second_sink_provider{
-        static std::ostream& sink(){
-            return oss2;
-        }
-    };
-
+    struct sink1 { static std::ostream& sink() { return oss; } };
+    struct sink2 { static std::ostream& sink() { return oss2; } };
 }
 
-
-BOOST_AUTO_TEST_SUITE( loggers_test_suite )
-
-BOOST_AUTO_TEST_CASE( log_nothing_test )
-{
+TEST_CASE("logger ignores messages below its level", "[logger]") {
     oss.str("");
-
-    //logger definition
-    cadmium::logger::logger<cadmium::logger::logger_info, cadmium::logger::formatter<float>, oss_test_sink_provider> l;
-
-    //log usage in different source
+    cadmium::logger::logger<cadmium::logger::logger_info,
+                            cadmium::logger::formatter<float>, sink1> l;
     l.log<cadmium::logger::logger_debug, cadmium::logger::run_info>("nothing to show");
-
-    BOOST_CHECK(oss.str().empty());
+    CHECK(oss.str().empty());
 }
 
-BOOST_AUTO_TEST_CASE( simple_logger_logs_test )
-{
+TEST_CASE("logger emits message at matching level", "[logger]") {
     oss.str("");
-
-    //logger definition
-    cadmium::logger::logger<cadmium::logger::logger_info, cadmium::logger::formatter<float>, oss_test_sink_provider> l;
-
-    //log usage in different source
+    cadmium::logger::logger<cadmium::logger::logger_info,
+                            cadmium::logger::formatter<float>, sink1> l;
     l.log<cadmium::logger::logger_info, cadmium::logger::run_info>("something to show");
-
-    BOOST_CHECK_EQUAL(oss.str(), "something to show\n");
-
+    CHECK(oss.str() == "something to show\n");
 }
 
-BOOST_AUTO_TEST_CASE( multiple_loggers_test )
-{
+TEST_CASE("multilogger routes to each sink by level", "[logger][multilogger]") {
     oss.str("");
     oss2.str("");
-    //loggers definition
-    using log1=cadmium::logger::logger<cadmium::logger::logger_info, cadmium::logger::formatter<float>, oss_test_sink_provider>;
-    using log2=cadmium::logger::logger<cadmium::logger::logger_debug, cadmium::logger::formatter<float>, oss_test_second_sink_provider>;
-
+    using log1 = cadmium::logger::logger<cadmium::logger::logger_info,
+                                         cadmium::logger::formatter<float>, sink1>;
+    using log2 = cadmium::logger::logger<cadmium::logger::logger_debug,
+                                         cadmium::logger::formatter<float>, sink2>;
     cadmium::logger::multilogger<log1, log2> l;
-
-    //log usage in different source
-    l.log<cadmium::logger::logger_info, cadmium::logger::run_info>("some info");
+    l.log<cadmium::logger::logger_info,  cadmium::logger::run_info>("some info");
     l.log<cadmium::logger::logger_debug, cadmium::logger::run_info>("some debug");
-
-    BOOST_CHECK_EQUAL(oss.str(), "some info\n");
-    BOOST_CHECK_EQUAL(oss2.str(), "some debug\n");
-
+    CHECK(oss.str()  == "some info\n");
+    CHECK(oss2.str() == "some debug\n");
 }
-
-
-BOOST_AUTO_TEST_SUITE_END()

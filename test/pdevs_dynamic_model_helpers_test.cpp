@@ -24,97 +24,77 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define BOOST_TEST_DYN_LINK
-#include <boost/test/unit_test.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <any>
 
-#include <iostream>
-
-#include <cadmium/modeling/message_bag.hpp>
 #include <cadmium/modeling/dynamic_message_bag.hpp>
-#include <cadmium/modeling/ports.hpp>
-#include <cadmium/modeling/dynamic_models_helpers.hpp>
 #include <cadmium/modeling/dynamic_model_translator.hpp>
+#include <cadmium/modeling/dynamic_models_helpers.hpp>
+#include <cadmium/modeling/message_bag.hpp>
+#include <cadmium/modeling/ports.hpp>
 
+// Port types must be at namespace scope — local structs cannot be template arguments in C++
+namespace {
+    struct mh_test_out : public cadmium::out_port<int> {};
+    struct mh_test_in  : public cadmium::in_port<int>  {};
 
-BOOST_AUTO_TEST_SUITE( test_links )
+    struct mh_in_port_0 : public cadmium::in_port<int>  {};
+    struct mh_in_port_1 : public cadmium::in_port<int>  {};
+    struct mh_out_port_0 : public cadmium::out_port<int> {};
+}
 
-    BOOST_AUTO_TEST_CASE( test_link_creation) {
-        struct test_out: public cadmium::out_port<int>{};
-        struct test_in: public cadmium::in_port<int>{};
+TEST_CASE("link creation records correct from/to port type indices", "[dynamic][link]") {
+    auto link = cadmium::dynamic::translate::make_link<mh_test_out, mh_test_in>();
+    CHECK(link->from_port_type_index() == typeid(mh_test_out));
+    CHECK(link->to_port_type_index()   == typeid(mh_test_in));
+}
 
-        std::shared_ptr<cadmium::dynamic::engine::link_abstract> link_test = cadmium::dynamic::translate::make_link<test_out, test_in>();
-        BOOST_CHECK(link_test->from_port_type_index() == typeid(test_out));
-        BOOST_CHECK(link_test->to_port_type_index() == typeid(test_in));
-    }
+TEST_CASE("route_messages copies message to destination without modifying source", "[dynamic][link]") {
+    auto link = cadmium::dynamic::translate::make_link<mh_test_out, mh_test_in>();
 
-    BOOST_AUTO_TEST_CASE( test_passing_message_between_bags_does_not_modify_from_bag_and_copies_messages_to_to_bag ) {
-        struct test_out: public cadmium::out_port<int>{};
-        struct test_in: public cadmium::in_port<int>{};
+    cadmium::message_bag<mh_test_out> bag_out;
+    bag_out.messages.push_back(3);
 
-        std::shared_ptr<cadmium::dynamic::engine::link_abstract> link_test = cadmium::dynamic::translate::make_link<test_out, test_in>();
+    cadmium::dynamic::message_bags bag_from;
+    bag_from[link->from_port_type_index()] = bag_out;
 
-        cadmium::message_bag<test_out> bag_out;
+    cadmium::dynamic::message_bags bag_to;
+    link->route_messages(bag_from, bag_to);
 
-        bag_out.messages.push_back(3);
-        cadmium::dynamic::message_bags bag_from;
-        bag_from[link_test->from_port_type_index()] = bag_out;
+    CHECK(std::any_cast<cadmium::message_bag<mh_test_out>>(
+        bag_from.at(link->from_port_type_index())).messages.size() == 1);
+    CHECK(std::any_cast<cadmium::message_bag<mh_test_in>>(
+        bag_to.at(link->to_port_type_index())).messages.size() == 1);
+    CHECK(std::any_cast<cadmium::message_bag<mh_test_in>>(
+        bag_to.at(link->to_port_type_index())).messages.front() == 3);
+}
 
-        BOOST_CHECK_EQUAL(bag_out.messages.size(), 1);
-        BOOST_CHECK_EQUAL(bag_out.messages.front(), 3);
-        BOOST_CHECK_EQUAL(boost::any_cast<cadmium::message_bag<test_out>>(bag_from.at(link_test->from_port_type_index())).messages.size(), 1);
-        BOOST_CHECK_EQUAL(boost::any_cast<cadmium::message_bag<test_out>>(bag_from.at(link_test->from_port_type_index())).messages.front(), 3);
+TEST_CASE("route_messages called twice accumulates messages in destination", "[dynamic][link]") {
+    auto link = cadmium::dynamic::translate::make_link<mh_test_out, mh_test_in>();
 
-        cadmium::dynamic::message_bags bag_to;
-        link_test->route_messages(bag_from, bag_to);
+    cadmium::message_bag<mh_test_out> bag_out;
+    bag_out.messages.push_back(3);
+    cadmium::dynamic::message_bags bag_from;
+    bag_from[link->from_port_type_index()] = bag_out;
+    cadmium::dynamic::message_bags bag_to;
 
-        // bag_from was not modified
-        BOOST_CHECK_EQUAL(bag_out.messages.size(), 1);
-        BOOST_CHECK_EQUAL(bag_out.messages.front(), 3);
-        BOOST_CHECK_EQUAL(boost::any_cast<cadmium::message_bag<test_out>>(bag_from.at(link_test->from_port_type_index())).messages.size(), 1);
-        BOOST_CHECK_EQUAL(boost::any_cast<cadmium::message_bag<test_out>>(bag_from.at(link_test->from_port_type_index())).messages.front(), 3);
+    link->route_messages(bag_from, bag_to);
+    link->route_messages(bag_from, bag_to);
 
-        // bag_to has the new message
-        BOOST_CHECK_EQUAL(boost::any_cast<cadmium::message_bag<test_in>>(bag_to.at(link_test->to_port_type_index())).messages.size(), 1);
-        BOOST_CHECK_EQUAL(boost::any_cast<cadmium::message_bag<test_in>>(bag_to.at(link_test->to_port_type_index())).messages.front(), 3);
+    CHECK(std::any_cast<cadmium::message_bag<mh_test_in>>(
+        bag_to.at(link->to_port_type_index())).messages.size() == 2);
+}
 
-        // testing the pass_messages for defined bags
-        link_test->route_messages(bag_from, bag_to);
+TEST_CASE("make_ports produces correct port type indices from tuple", "[dynamic][translate]") {
+    using iports = std::tuple<mh_in_port_0, mh_in_port_1>;
+    using oports = std::tuple<mh_out_port_0>;
 
-        // bag_from was not modified
-        BOOST_CHECK_EQUAL(bag_out.messages.size(), 1);
-        BOOST_CHECK_EQUAL(bag_out.messages.front(), 3);
-        BOOST_CHECK_EQUAL(boost::any_cast<cadmium::message_bag<test_out>>(bag_from.at(link_test->from_port_type_index())).messages.size(), 1);
-        BOOST_CHECK_EQUAL(boost::any_cast<cadmium::message_bag<test_out>>(bag_from.at(link_test->from_port_type_index())).messages.front(), 3);
+    auto input_ports  = cadmium::dynamic::translate::make_ports<iports>();
+    auto output_ports = cadmium::dynamic::translate::make_ports<oports>();
 
-        // to_bag has one more new message
-        BOOST_CHECK_EQUAL(boost::any_cast<cadmium::message_bag<test_in>>(bag_to.at(link_test->to_port_type_index())).messages.size(), 2);
-        BOOST_CHECK_EQUAL(boost::any_cast<cadmium::message_bag<test_in>>(bag_to.at(link_test->to_port_type_index())).messages[0], 3);
-        BOOST_CHECK_EQUAL(boost::any_cast<cadmium::message_bag<test_in>>(bag_to.at(link_test->to_port_type_index())).messages[1], 3);
-    }
-
-    BOOST_AUTO_TEST_CASE( make_ports_from_cadmium_tuple_port_type ) {
-        struct in_port_0 : public cadmium::in_port<int>{};
-        struct in_port_1 : public cadmium::in_port<int>{};
-        using iports = std::tuple<in_port_0,in_port_1>;
-        struct out_port_0 : public cadmium::out_port<int>{};
-        using oports = std::tuple<out_port_0>;
-
-        cadmium::dynamic::modeling::Ports input_ports = cadmium::dynamic::translate::make_ports<iports>();
-        cadmium::dynamic::modeling::Ports output_ports = cadmium::dynamic::translate::make_ports<oports>();
-
-        BOOST_CHECK_EQUAL(input_ports.size(), 2);
-        BOOST_CHECK_EQUAL(output_ports.size(), 1);
-
-        std::type_index type_index_in_port_0 = typeid(in_port_0);
-        std::type_index type_index_in_port_1 = typeid(in_port_1);
-        std::type_index type_index_out_port_0 = typeid(out_port_0);
-        BOOST_CHECK(type_index_in_port_0 == input_ports[0]);
-        BOOST_CHECK(type_index_in_port_1 == input_ports[1]);
-        BOOST_CHECK(type_index_out_port_0 == output_ports[0]);
-    }
-
-    BOOST_AUTO_TEST_CASE( make_eic_from_cadmium_tuple_eic_type ) {
-        //TODO(Lao): implement this test
-    }
-
-BOOST_AUTO_TEST_SUITE_END()
+    REQUIRE(input_ports.size()  == 2);
+    REQUIRE(output_ports.size() == 1);
+    CHECK(input_ports[0]  == typeid(mh_in_port_0));
+    CHECK(input_ports[1]  == typeid(mh_in_port_1));
+    CHECK(output_ports[0] == typeid(mh_out_port_0));
+}

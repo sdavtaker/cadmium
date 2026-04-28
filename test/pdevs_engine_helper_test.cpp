@@ -24,73 +24,56 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <catch2/catch_test_macros.hpp>
 
-#define BOOST_TEST_DYN_LINK
-#include <boost/test/unit_test.hpp>
 #include <cadmium/basic_model/pdevs/accumulator.hpp>
-#include <cadmium/engine/pdevs_simulator.hpp>
-#include <cadmium/engine/pdevs_coordinator.hpp>
 #include <cadmium/basic_model/pdevs/generator.hpp>
+#include <cadmium/engine/pdevs_coordinator.hpp>
 #include <cadmium/engine/pdevs_engine_helpers.hpp>
+#include <cadmium/engine/pdevs_simulator.hpp>
 
-/**
-  * This test is for some common helper functions used by coordinators and simulators
-  */
-BOOST_AUTO_TEST_SUITE( pdevs_engine_helpers_test_suite )
-
-////Definition of an accumulator of floats
 template<typename TIME>
-using floating_accumulator=cadmium::basic_models::pdevs::accumulator<float, TIME>;
-using floating_accumulator_defs=cadmium::basic_models::pdevs::accumulator_defs<float>;
-//Definition of a simulator
-using simulator_of_floating_accumulator=cadmium::engine::simulator<floating_accumulator, float, cadmium::logger::not_logger>;
-//Definition of a tuple with one simulator
-using tuple_sim_accum=std::tuple<simulator_of_floating_accumulator>;
-BOOST_AUTO_TEST_CASE(get_engine_by_model__one_element_test){
+using floating_accumulator = cadmium::basic_models::pdevs::accumulator<float, TIME>;
+
+using simulator_of_floating_accumulator =
+    cadmium::engine::simulator<floating_accumulator, float, cadmium::logger::not_logger>;
+using tuple_sim_accum = std::tuple<simulator_of_floating_accumulator>;
+
+TEST_CASE("get_engine_by_model retrieves single element from tuple", "[pdevs][engine_helpers]") {
     tuple_sim_accum st;
-    cadmium::engine::get_engine_by_model<floating_accumulator<float>, tuple_sim_accum>(st);
+    CHECK_NOTHROW(cadmium::engine::get_engine_by_model<floating_accumulator<float>, tuple_sim_accum>(st));
 }
 
-//Definition of two generators
-const float init_period = 0.1f;
-const float init_output_message = 1.0f;
+const float gen_period = 0.1f;
+const float gen_output = 1.0f;
+
 template<typename TIME>
-using floating_generator_base=cadmium::basic_models::pdevs::generator<float, TIME>;
-using floating_generator_defs=cadmium::basic_models::pdevs::generator_defs<float>;
+using floating_generator_base = cadmium::basic_models::pdevs::generator<float, TIME>;
+
 template<typename TIME>
 struct floating_generator_a : public floating_generator_base<TIME> {
-    float period() const override {
-        return init_period;
-    }
-    float output_message() const override {
-        return init_output_message;
-    }
+    float period() const override { return gen_period; }
+    float output_message() const override { return gen_output; }
 };
 
 template<typename TIME>
 struct floating_generator_b : public floating_generator_base<TIME> {
-    float period() const override {
-        return init_period;
-    }
-    float output_message() const override {
-        return init_output_message;
-    }
+    float period() const override { return gen_period; }
+    float output_message() const override { return gen_output; }
 };
 
-//Definition of two simulator
-using simulator_of_gen_a=cadmium::engine::simulator<floating_generator_a, float, cadmium::logger::not_logger>;
-using simulator_of_gen_b=cadmium::engine::simulator<floating_generator_b, float, cadmium::logger::not_logger>;
-//Definition of a tuple with one simulator
-using tuple_sim_gens=std::tuple<simulator_of_gen_a, simulator_of_gen_b>;
-BOOST_AUTO_TEST_CASE(get_engine_by_model_two_elements_get_first_test){
+using simulator_of_gen_a = cadmium::engine::simulator<floating_generator_a, float, cadmium::logger::not_logger>;
+using simulator_of_gen_b = cadmium::engine::simulator<floating_generator_b, float, cadmium::logger::not_logger>;
+using tuple_sim_gens = std::tuple<simulator_of_gen_a, simulator_of_gen_b>;
+
+TEST_CASE("get_engine_by_model retrieves first of two elements", "[pdevs][engine_helpers]") {
     tuple_sim_gens st;
-    auto eng_a=cadmium::engine::get_engine_by_model<floating_generator_a<float>, tuple_sim_gens>(st);
+    CHECK_NOTHROW(
+        cadmium::engine::get_engine_by_model<floating_generator_a<float>, tuple_sim_gens>(st));
 }
 
-BOOST_AUTO_TEST_CASE(get_engine_by_model_two_elements_get_last_test){
+TEST_CASE("get_engine_by_model retrieves second of two elements", "[pdevs][engine_helpers]") {
     tuple_sim_gens st;
-    auto eng_b=cadmium::engine::get_engine_by_model<floating_generator_b<float>, tuple_sim_gens>(st);
+    CHECK_NOTHROW(
+        cadmium::engine::get_engine_by_model<floating_generator_b<float>, tuple_sim_gens>(st));
 }
-
-
-BOOST_AUTO_TEST_SUITE_END()

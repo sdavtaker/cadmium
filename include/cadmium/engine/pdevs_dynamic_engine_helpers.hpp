@@ -33,6 +33,7 @@
 
 #include <cadmium/modeling/dynamic_message_bag.hpp>
 #include <cadmium/engine/pdevs_dynamic_engine.hpp>
+#include <cadmium/engine/pdevs_dynamic_link.hpp>
 #include <cadmium/logger/common_loggers.hpp>
 
 namespace cadmium {

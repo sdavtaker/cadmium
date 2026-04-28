@@ -24,125 +24,99 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <catch2/catch_test_macros.hpp>
+#include <cmath>
+#include <stdexcept>
 
-#define BOOST_TEST_DYN_LINK
-#include<boost/test/unit_test.hpp>
+#include <cadmium/basic_model/pdevs/accumulator.hpp>
+#include <cadmium/concept/concept_helpers.hpp>
+#include <cadmium/modeling/message_bag.hpp>
 
-#include<cadmium/modeling/message_bag.hpp>
-#include<cadmium/basic_model/pdevs/accumulator.hpp>
-#include<cadmium/concept/concept_helpers.hpp>
+template<typename TIME>
+using floating_accumulator = cadmium::basic_models::pdevs::accumulator<float, TIME>;
+using floating_accumulator_defs = cadmium::basic_models::pdevs::accumulator_defs<float>;
 
-#include<cmath>
-#include<stdexcept>
+TEST_CASE("pdevs accumulator is atomic", "[pdevs][accumulator]") {
+    CHECK(cadmium::model_checks::is_atomic<floating_accumulator>::value());
+}
 
-BOOST_AUTO_TEST_SUITE( pdevs_basic_models_suite )
-    BOOST_AUTO_TEST_SUITE( pdevs_accumulator_suite )
+TEST_CASE("pdevs accumulator is constructable", "[pdevs][accumulator]") {
+    CHECK_NOTHROW(floating_accumulator<float>{});
+}
 
-        template<typename TIME>
-        using floating_accumulator=cadmium::basic_models::pdevs::accumulator<float, TIME>;
-        using floating_accumulator_defs=cadmium::basic_models::pdevs::accumulator_defs<float>;
+TEST_CASE("pdevs accumulator internal transition resets state and makes time advance infinite",
+          "[pdevs][accumulator]") {
+    auto a = floating_accumulator<float>();
+    a.state = std::make_tuple(1.0f, true);
+    CHECK(a.time_advance() == 0.0f);
+    a.internal_transition();
+    CHECK(std::isinf(a.time_advance()));
+    CHECK(std::get<float>(a.state) == 0.0f);
+    CHECK(std::get<bool>(a.state) == false);
+}
 
-        BOOST_AUTO_TEST_CASE( it_is_atomic_test ){
-            BOOST_CHECK(cadmium::model_checks::is_atomic<floating_accumulator>::value());
-        }
+TEST_CASE("pdevs accumulator internal transition throws when not in reset state", "[pdevs][accumulator]") {
+    auto a = floating_accumulator<float>();
+    a.state = std::make_tuple(1.0f, false);
+    CHECK_THROWS_AS(a.internal_transition(), std::logic_error);
+}
 
-        BOOST_AUTO_TEST_CASE( it_is_constructable_test )
-        {
-            BOOST_REQUIRE_NO_THROW( floating_accumulator<float>{} );
-        }
+TEST_CASE("pdevs accumulator external transition throws when in reset state", "[pdevs][accumulator]") {
+    auto a = floating_accumulator<float>();
+    a.state = std::make_tuple(1.0f, true);
+    typename cadmium::make_message_bags<floating_accumulator<float>::input_ports>::type bags;
+    cadmium::get_messages<floating_accumulator_defs::add>(bags).push_back(5.0f);
+    CHECK_THROWS_AS(a.external_transition(1.0f, bags), std::logic_error);
+}
 
+TEST_CASE("pdevs accumulator output throws when not in reset state", "[pdevs][accumulator]") {
+    auto a = floating_accumulator<float>();
+    a.state = std::make_tuple(1.0f, false);
+    CHECK_THROWS_AS(a.output(), std::logic_error);
+}
 
+TEST_CASE("pdevs accumulator output returns sum of accumulated values", "[pdevs][accumulator]") {
+    auto a = floating_accumulator<float>();
+    a.state = std::make_tuple(10.0f, false);
 
-        BOOST_AUTO_TEST_CASE( time_advance_is_infinite_after_internal_transition_test )
-        {
-            auto a = floating_accumulator<float>();
-            //setting state
-            a.state = std::make_tuple(1.0f, true); //accumulated one and running a reset
-            //checking time_advance before and after internal transition
-            BOOST_CHECK_EQUAL(0.0f, a.time_advance());
-            a.internal_transition();
-            BOOST_CHECK(std::isinf(a.time_advance()));
-            //validating final state
-            BOOST_CHECK_EQUAL(0.0f, std::get<float>(a.state));
-            BOOST_CHECK_EQUAL(false, std::get<bool>(a.state));
-        }
+    typename cadmium::make_message_bags<floating_accumulator<float>::input_ports>::type bags;
+    cadmium::get_messages<floating_accumulator_defs::add>(bags).push_back(5.0f);
+    a.external_transition(10.0f, bags);
+    CHECK(std::get<float>(a.state) == 15.0f);
 
-        BOOST_AUTO_TEST_CASE( it_throws_on_call_to_internal_transition_at_non_reset_state_test )
-        {
-            auto a = floating_accumulator<float>();
-            //setting state
-            a.state = std::make_tuple(1.0f, false); //accumulated one and not running a reset
-            BOOST_CHECK(std::isinf(a.time_advance()));
+    typename cadmium::make_message_bags<floating_accumulator<float>::input_ports>::type bags2;
+    cadmium::get_messages<floating_accumulator_defs::add>(bags2).push_back(3.0f);
+    cadmium::get_messages<floating_accumulator_defs::add>(bags2).push_back(7.0f);
+    a.external_transition(9.0f, bags2);
+    CHECK(std::get<float>(a.state) == 25.0f);
 
-            BOOST_CHECK_THROW( a.internal_transition(), std::logic_error);
-        }
+    typename cadmium::make_message_bags<floating_accumulator<float>::input_ports>::type bags3;
+    cadmium::get_messages<floating_accumulator_defs::add>(bags3).push_back(3.0f);
+    cadmium::get_messages<floating_accumulator_defs::reset>(bags3).emplace_back();
+    a.external_transition(2.0f, bags3);
+    CHECK(std::get<float>(a.state) == 28.0f);
+    CHECK(std::get<bool>(a.state) == true);
 
-        BOOST_AUTO_TEST_CASE( it_throws_on_call_to_external_transition_on_reset_state_test )
-        {
-            auto a = floating_accumulator<float>();
-            //setting state
-            a.state = std::make_tuple(1.0f, true); //accumulated one and running a reset
-            //checking time_advance before and after internal transition
-            BOOST_CHECK_EQUAL(0.0f, a.time_advance());
+    auto out = a.output();
+    REQUIRE(cadmium::get_messages<floating_accumulator_defs::sum>(out).size() == 1);
+    CHECK(cadmium::get_messages<floating_accumulator_defs::sum>(out)[0] == 28.0f);
+}
 
-            typename cadmium::make_message_bags<floating_accumulator<float>::input_ports>::type bags;
-            cadmium::get_messages<floating_accumulator_defs::add>(bags).push_back(5.0f);
-            BOOST_CHECK_THROW( a.external_transition(1.0f, bags), std::logic_error);
-        }
+TEST_CASE("pdevs accumulator confluence transition applies internal then external", "[pdevs][accumulator]") {
+    auto a = floating_accumulator<float>();
+    a.state = std::make_tuple(10.0f, false);
 
-        BOOST_AUTO_TEST_CASE( output_function_throws_when_not_in_reset_state_test )
-        {
-            auto a = floating_accumulator<float>();
-            //setting state
-            a.state = std::make_tuple(1.0f, false); //accumulated one and not running a reset
-            BOOST_CHECK_THROW( a.output(), std::logic_error);
-        }
+    // put in reset state
+    typename cadmium::make_message_bags<floating_accumulator<float>::input_ports>::type bags;
+    cadmium::get_messages<floating_accumulator_defs::reset>(bags).emplace_back();
+    a.external_transition(0.0f, bags);
+    CHECK(std::get<float>(a.state) == 10.0f);
+    CHECK(std::get<bool>(a.state) == true);
 
-        BOOST_AUTO_TEST_CASE( output_function_returns_accumulated_value_test )
-        {
-            auto a = floating_accumulator<float>();
-            //setting state
-            a.state = std::make_tuple(10.0f, false); //accumulated one and not running a reset
-            //introducing 3 new values, and setting
-            typename cadmium::make_message_bags<floating_accumulator<float>::input_ports>::type bags_one;
-            cadmium::get_messages<typename floating_accumulator_defs::add>(bags_one).push_back(5.0f);
-            a.external_transition(10.0f, bags_one);
-            //validate state
-            BOOST_CHECK_EQUAL(15.0f, std::get<float>(a.state));
-            BOOST_CHECK_EQUAL(false, std::get<bool>(a.state));
-
-            typename cadmium::make_message_bags<floating_accumulator<float>::input_ports>::type bags_two;
-            cadmium::get_messages<typename floating_accumulator_defs::add>(bags_two).push_back(3.0f);
-            cadmium::get_messages<typename floating_accumulator_defs::add>(bags_two).push_back(7.0f);
-            a.external_transition(9.0f, bags_two);
-            //validate state
-            BOOST_CHECK_EQUAL(25.0f, std::get<float>(a.state));
-            BOOST_CHECK_EQUAL(false, std::get<bool>(a.state));
-
-            typename cadmium::make_message_bags<floating_accumulator<float>::input_ports>::type bags_three;
-            cadmium::get_messages<typename floating_accumulator_defs::add>(bags_three).push_back(3.0f);
-            cadmium::get_messages<typename floating_accumulator_defs::reset>(bags_three).emplace_back();
-            a.external_transition(2.0f, bags_three);
-            BOOST_CHECK_EQUAL(28.0f, std::get<float>(a.state));
-            BOOST_CHECK_EQUAL(true, std::get<bool>(a.state));
-
-            //validate output
-            auto outmb1 = a.output();
-            typename cadmium::make_message_bags<floating_accumulator<float>::output_ports>::type outmb_expected;
-            cadmium::get_messages<typename floating_accumulator_defs::sum>(outmb_expected).push_back(28.0f);
-            BOOST_CHECK_EQUAL(1, cadmium::get_messages<typename floating_accumulator_defs::sum>(outmb1).size());
-            BOOST_CHECK_EQUAL(cadmium::get_messages<typename floating_accumulator_defs::sum>(outmb_expected)[0],
-                              cadmium::get_messages<typename floating_accumulator_defs::sum>(outmb1)[0]);
-
-
-            //running confluence, because waiting for an internal here
-            typename cadmium::make_message_bags<floating_accumulator<float>::input_ports>::type bags_four;
-            cadmium::get_messages<typename floating_accumulator_defs::add>(bags_four).push_back(2.0f);
-            a.confluence_transition(0.0f, bags_four);
-            BOOST_CHECK_EQUAL(2.0f, std::get<float>(a.state));
-            BOOST_CHECK_EQUAL(false, std::get<bool>(a.state));
-        }
-
-    BOOST_AUTO_TEST_SUITE_END()
-
-BOOST_AUTO_TEST_SUITE_END()
+    // confluence: internal (reset to 0) then external (add 2)
+    typename cadmium::make_message_bags<floating_accumulator<float>::input_ports>::type bags2;
+    cadmium::get_messages<floating_accumulator_defs::add>(bags2).push_back(2.0f);
+    a.confluence_transition(0.0f, bags2);
+    CHECK(std::get<float>(a.state) == 2.0f);
+    CHECK(std::get<bool>(a.state) == false);
+}

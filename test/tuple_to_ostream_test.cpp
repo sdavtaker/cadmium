@@ -24,29 +24,24 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-#define BOOST_TEST_DYN_LINK
-#include <boost/test/unit_test.hpp>
-#include <tuple>
+#include <catch2/catch_test_macros.hpp>
 #include <sstream>
+#include <tuple>
+
 #include <cadmium/logger/tuple_to_ostream.hpp>
 
-using namespace cadmium; //for the ostream << to be accesible
+using namespace cadmium;
 
-BOOST_AUTO_TEST_SUITE( tuple_to_ostream_suite )
-BOOST_AUTO_TEST_CASE( simple_common_tuples_test ){
+TEST_CASE("empty tuple streams as []", "[tuple_to_ostream]") {
     std::ostringstream oss;
-
     std::tuple<> empty;
     oss << empty;
-    BOOST_CHECK_EQUAL(oss.str(), "[]");
-    oss.str("");
-
-    auto one_int = std::make_tuple(1);
-    oss << one_int;
-    BOOST_CHECK_EQUAL(oss.str(), "[1]");
-    oss.str("");
-
+    CHECK(oss.str() == "[]");
 }
 
-BOOST_AUTO_TEST_SUITE_END()
+TEST_CASE("single-element int tuple streams as [N]", "[tuple_to_ostream]") {
+    std::ostringstream oss;
+    auto one_int = std::make_tuple(1);
+    oss << one_int;
+    CHECK(oss.str() == "[1]");
+}

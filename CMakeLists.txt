@@ -48,7 +48,34 @@ if(CADMIUM_BUILD_TESTS)
     enable_testing()
 
     # Batch 1: pdevs static engine (memory-vault-9py)
-    foreach(test_name pdevs_simulator_test pdevs_coordinator_test pdevs_runner_test)
+    foreach(test_name
+            pdevs_simulator_test
+            pdevs_coordinator_test
+            pdevs_runner_test)
+        add_executable(${test_name} test/${test_name}.cpp)
+        target_link_libraries(${test_name} PRIVATE cadmium Catch2::Catch2WithMain)
+        add_test(NAME ${test_name} COMMAND ${test_name})
+    endforeach()
+
+    # Batch 2: basic models + dynamic engine (memory-vault-jlw)
+    foreach(test_name
+            devs_accumulator_model_test
+            devs_generator_model_test
+            devs_passive_model_test
+            pdevs_accumulator_model_test
+            pdevs_generator_model_test
+            pdevs_passive_model_test
+            tuple_to_ostream_test
+            logger_test
+            pdevs_engine_helper_test
+            pdevs_dynamic_atomic_test
+            pdevs_dynamic_atomic_helpers_test
+            pdevs_dynamic_engine_helpers_test
+            pdevs_dynamic_model_helpers_test
+            pdevs_dynamic_simulator_test
+            pdevs_dynamic_coordinator_test
+            pdevs_dynamic_runner_test
+            pdevs_boxes_cleanup_test)
         add_executable(${test_name} test/${test_name}.cpp)
         target_link_libraries(${test_name} PRIVATE cadmium Catch2::Catch2WithMain)
         add_test(NAME ${test_name} COMMAND ${test_name})
