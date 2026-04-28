@@ -27,7 +27,7 @@
 #ifndef CADMIUM_PDEVS_SIMULATOR_HPP
 #define CADMIUM_PDEVS_SIMULATOR_HPP
 #include <sstream>
-#include <boost/type_index.hpp>
+#include <typeinfo>
 
 #include <cadmium/modeling/message_bag.hpp>
 #include <cadmium/concept/atomic_model_assert.hpp>
@@ -84,7 +84,7 @@ namespace cadmium {
 
                 oss.clear();
                 oss.str("");
-                oss << boost::typeindex::type_id<model_type>().pretty_name();
+                oss << typeid(model_type).name();
                 _model_id = oss.str();
 
                 LOGGER::template log<cadmium::logger::logger_info, cadmium::logger::sim_info_init>(initial_time, _model_id);
@@ -95,7 +95,6 @@ namespace cadmium {
 
                 LOGGER::template log<cadmium::logger::logger_state, cadmium::logger::sim_state>(model_state, _model_id);
             }
-
 
             TIME next() const noexcept{
                 return _next;
@@ -128,7 +127,6 @@ namespace cadmium {
             out_bags_type outbox() const noexcept{
                 return _outbox;
             }
-
 
             /**
              * @brief inbox keeps the input introduced by upper level coordinator for running next advance_simulation

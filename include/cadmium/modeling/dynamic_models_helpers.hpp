@@ -27,9 +27,10 @@
 #ifndef CADMIUM_DYNAMIC_ATOMIC_HELPERS_HPP
 #define CADMIUM_DYNAMIC_ATOMIC_HELPERS_HPP
 
+#include <typeinfo>
 #include <tuple>
 #include <typeindex>
-#include <boost/any.hpp>
+#include <any>
 #include <map>
 #include <memory>
 #include <algorithm>
@@ -73,8 +74,8 @@ namespace cadmium {
                         os << ", ";
                     }
 
-                    bag_type& casted_bag = boost::any_cast<bag_type&>(bags.at(typeid(port_type)));
-                    os << boost::typeindex::type_id<port_type>().pretty_name();
+                    bag_type& casted_bag = std::any_cast<bag_type&>(bags.at(typeid(port_type)));
+                    os << typeid(port_type).name();
                     os << ": ";
                     cadmium::logger::implode(os, casted_bag.messages);
 
@@ -85,7 +86,6 @@ namespace cadmium {
                 cadmium::helper::for_each<BST>(bs, print_messages_fold_expr);
                 os << "]";
             }
-
 
             /**
              * @brief Constructs an empty dynamic_message_bag with all the bs tuple members as keys of empties message bags.
@@ -140,7 +140,7 @@ namespace cadmium {
                     using port_type = typename bag_type::port;
 
                     if (bags.find(typeid(port_type)) != bags.end()) {
-                        bag_type b2 = boost::any_cast<bag_type>(bags.at(typeid(port_type)));
+                        bag_type b2 = std::any_cast<bag_type>(bags.at(typeid(port_type)));
                         auto& current_bag = cadmium::get_messages<port_type>(bs);
                         current_bag.insert(
                                 current_bag.end(),
@@ -153,7 +153,7 @@ namespace cadmium {
             }
 
             /**
-             * @brief Insert all the message bs of bags in bags by an implicit conversion of them to boost::any.
+             * @brief Insert all the message bs of bags in bags by an implicit conversion of them to std::any.
              *
              * @tparam BST The message bag tuple that carries the messages to fill the cadmium::dynamic::message_bags.
              * @param bags - The dynamic_message_bag that will be filled with the bs messages.

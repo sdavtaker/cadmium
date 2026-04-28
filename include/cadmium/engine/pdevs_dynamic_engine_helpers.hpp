@@ -45,7 +45,7 @@ namespace cadmium {
                     using bag_type = decltype(b);
                     using port_type = typename bag_type::port;
                     if (dynamic_bag.find(typeid(port_type)) != dynamic_bag.cend()) {
-                        return boost::any_cast<bag_type>(dynamic_bag.at(typeid(port_type))).messages.empty();
+                        return std::any_cast<bag_type>(dynamic_bag.at(typeid(port_type))).messages.empty();
                     }
                     return true;
                 };

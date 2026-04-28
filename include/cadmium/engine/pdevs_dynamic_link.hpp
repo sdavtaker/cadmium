@@ -27,6 +27,7 @@
 #ifndef CADMIUM_PDEVS_DYNAMIC_LINK_HPP
 #define CADMIUM_PDEVS_DYNAMIC_LINK_HPP
 
+#include <typeinfo>
 #include <typeindex>
 #include <memory>
 
@@ -88,24 +89,24 @@ namespace cadmium {
                 }
 
                 cadmium::dynamic::logger::routed_messages
-                pass_messages(const boost::any& bag_from, boost::any& bag_to) const {
-                    from_message_bag_type b_from = boost::any_cast<from_message_bag_type>(bag_from);
-                    to_message_bag_type *b_to = boost::any_cast<to_message_bag_type>(&bag_to);
+                pass_messages(const std::any& bag_from, std::any& bag_to) const {
+                    from_message_bag_type b_from = std::any_cast<from_message_bag_type>(bag_from);
+                    to_message_bag_type *b_to = std::any_cast<to_message_bag_type>(&bag_to);
                     b_to->messages.insert(b_to->messages.end(), b_from.messages.begin(),
                                           b_from.messages.end());
 
                     return cadmium::dynamic::logger::routed_messages(
                             cadmium::logger::messages_as_strings(b_from.messages),
                             cadmium::logger::messages_as_strings(b_to->messages),
-                            boost::typeindex::type_id<PORT_FROM>().pretty_name(),
-                            boost::typeindex::type_id<PORT_TO>().pretty_name()
+                            typeid(PORT_FROM).name(),
+                            typeid(PORT_TO).name()
                     );
                 }
 
                 cadmium::dynamic::logger::routed_messages
-                pass_messages_to_new_bag(const boost::any& bag_from,
+                pass_messages_to_new_bag(const std::any& bag_from,
                                          cadmium::dynamic::message_bags& bags_to) const {
-                    from_message_bag_type b_from = boost::any_cast<from_message_bag_type>(bag_from);
+                    from_message_bag_type b_from = std::any_cast<from_message_bag_type>(bag_from);
                     to_message_bag_type b_to;
                     b_to.messages.insert(b_to.messages.end(), b_from.messages.begin(),
                                          b_from.messages.end());
@@ -114,8 +115,8 @@ namespace cadmium {
                     return cadmium::dynamic::logger::routed_messages(
                             cadmium::logger::messages_as_strings(b_from.messages),
                             cadmium::logger::messages_as_strings(b_to.messages),
-                            boost::typeindex::type_id<PORT_FROM>().pretty_name(),
-                            boost::typeindex::type_id<PORT_TO>().pretty_name()
+                            typeid(PORT_FROM).name(),
+                            typeid(PORT_TO).name()
                     );
                 }
 
@@ -127,7 +128,7 @@ namespace cadmium {
                  * @return true if there is messages, otherwise false
                  */
                 bool is_there_messages_to_route(const cadmium::dynamic::message_bags &bags) const {
-                    return boost::any_cast<from_message_bag_type>(
+                    return std::any_cast<from_message_bag_type>(
                             bags.at(this->from_port_type_index())).messages.size() > 0;
                 }
 
@@ -147,8 +148,8 @@ namespace cadmium {
                     }
 
                     cadmium::dynamic::logger::routed_messages empty_ret(
-                            boost::typeindex::type_id<PORT_FROM>().pretty_name(),
-                            boost::typeindex::type_id<PORT_TO>().pretty_name()
+                            typeid(PORT_FROM).name(),
+                            typeid(PORT_TO).name()
                     );
                     return empty_ret; // if no messages where routed, it returns an empty vector
                 }
@@ -156,6 +157,5 @@ namespace cadmium {
         }
     }
 }
-
 
 #endif //CADMIUM_PDEVS_DYNAMIC_LINK_HPP

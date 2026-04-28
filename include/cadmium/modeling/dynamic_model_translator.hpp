@@ -27,6 +27,7 @@
 #ifndef CADMIUM_DYNAMIC_MODEL_TRANSLATOR_HPP
 #define CADMIUM_DYNAMIC_MODEL_TRANSLATOR_HPP
 
+#include <typeinfo>
 #include <utility>
 #include <map>
 #include <memory>
@@ -76,13 +77,13 @@ namespace cadmium {
 
                     std::type_index to_model_type(typeid(to_model<TIME>));
                     if (translated_models.find(to_model_type) == translated_models.cend()) {
-                        throw std::domain_error("EIC destination  " + boost::typeindex::type_id<to_model<TIME>>().pretty_name() + " is not in the coupled sub models list");
+                        throw std::domain_error("EIC destination  " + typeid(to_model<TIME>).name() + " is not in the coupled sub models list");
                     }
                     std::string to_id = translated_models.at(to_model_type)->get_id();
 
                     std::type_index from_model_type(typeid(from_model<TIME>));
                     if (translated_models.find(from_model_type) == translated_models.cend()) {
-                        throw std::domain_error("EIC destination model " + boost::typeindex::type_id<from_model<TIME>>().pretty_name() + " is not in the coupled sub models list");
+                        throw std::domain_error("EIC destination model " + typeid(from_model<TIME>).name() + " is not in the coupled sub models list");
                     }
                     std::string from_id = translated_models.at(from_model_type)->get_id();
 
@@ -132,7 +133,7 @@ namespace cadmium {
 
                     std::type_index model_type(typeid(to_model<TIME>));
                     if (translated_models.find(model_type) == translated_models.cend()) {
-                        throw std::domain_error("EIC destination model " + boost::typeindex::type_id<to_model<TIME>>().pretty_name() + " is not in the coupled sub models list");
+                        throw std::domain_error("EIC destination model " + typeid(to_model<TIME>).name() + " is not in the coupled sub models list");
                     }
                     std::string to_id = translated_models.at(model_type)->get_id();
 
@@ -182,7 +183,7 @@ namespace cadmium {
 
                     std::type_index model_type(typeid(from_model<TIME>));
                     if (translated_models.find(model_type) == translated_models.cend()) {
-                        throw std::domain_error("EIC destination model " + boost::typeindex::type_id<from_model<TIME>>().pretty_name() + " is not in the coupled sub models list");
+                        throw std::domain_error("EIC destination model " + typeid(from_model<TIME>).name() + " is not in the coupled sub models list");
                     }
                     std::string from_id = translated_models.at(model_type)->get_id();
 
@@ -288,7 +289,6 @@ namespace cadmium {
 
             /*******************************************************************************************************/
 
-
             template<typename TIME, template<typename T> class MT, template<template<typename T2> class M> class COUPLED_TRANSLATOR, size_t S>
             struct make_dynamic_models_impl{
                 template<typename P>
@@ -339,7 +339,7 @@ namespace cadmium {
 
                     models_by_type sub_models = make_dynamic_models<TIME, submodels_t, coupled_model_translator>();
 
-                    std::string model_id = boost::typeindex::type_id<MODEL<TIME>>().pretty_name();
+                    std::string model_id = typeid(MODEL<TIME>).name();
                     cadmium::dynamic::modeling::Ports input_ports = cadmium::dynamic::translate::make_ports<input_ports_t>();
                     cadmium::dynamic::modeling::Ports output_ports = cadmium::dynamic::translate::make_ports<output_ports_t>();
                     cadmium::dynamic::modeling::EOCs eocs = cadmium::dynamic::translate::make_dynamic_eoc<TIME, eoc_t>(sub_models);

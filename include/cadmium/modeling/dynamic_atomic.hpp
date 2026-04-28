@@ -27,8 +27,9 @@
 #ifndef CADMIUM_DYNAMIC_ATOMIC_HPP
 #define CADMIUM_DYNAMIC_ATOMIC_HPP
 
+#include <typeinfo>
 #include <map>
-#include <boost/any.hpp>
+#include <any>
 #include <cadmium/modeling/dynamic_model.hpp>
 #include <cadmium/modeling/dynamic_message_bag.hpp>
 #include <cadmium/concept/concept_helpers.hpp>
@@ -72,7 +73,7 @@ namespace cadmium {
                 atomic() {
                     static_assert(cadmium::model_checks::is_atomic<ATOMIC>::value(), "This is not an atomic model");
                     cadmium::model_checks::pdevs::atomic_model_assert<ATOMIC>();
-                    _id = boost::typeindex::type_id<model_type>().pretty_name();
+                    _id = typeid(model_type).name();
                     _input_ports = cadmium::dynamic::modeling::create_dynamic_ports<input_ports>();
                     _output_ports = cadmium::dynamic::modeling::create_dynamic_ports<output_ports>();
                 }

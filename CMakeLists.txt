@@ -12,13 +12,6 @@ if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
 endif()
 
 # ----------------------------------------------------------------------------
-# Dependencies
-# ----------------------------------------------------------------------------
-
-# Boost: still used in engine/pdevs_*.hpp and logger/ until Boost→std migration
-find_package(Boost REQUIRED)
-
-# ----------------------------------------------------------------------------
 # cadmium INTERFACE library
 # ----------------------------------------------------------------------------
 
@@ -32,7 +25,6 @@ target_include_directories(cadmium INTERFACE
 
 target_compile_features(cadmium INTERFACE cxx_std_23)
 target_compile_options(cadmium INTERFACE -Wall -Wextra -pedantic)
-target_link_libraries(cadmium INTERFACE Boost::boost)
 
 # ----------------------------------------------------------------------------
 # Examples (pdevs only)

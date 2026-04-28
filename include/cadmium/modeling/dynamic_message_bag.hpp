@@ -27,13 +27,13 @@
 #ifndef CADMIUM_DYNAMIC_MESSAGE_BAG_HPP
 #define CADMIUM_DYNAMIC_MESSAGE_BAG_HPP
 
-#include <boost/any.hpp>
+#include <any>
 #include <map>
 #include <typeindex>
 
 namespace cadmium {
     namespace dynamic {
-        using message_bags = std::map<std::type_index, boost::any>;
+        using message_bags = std::map<std::type_index, std::any>;
     }
 }
 

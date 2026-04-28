@@ -24,11 +24,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #ifndef CADMIUM_PDEVS_COORDINATOR_H
 #define CADMIUM_PDEVS_COORDINATOR_H
+#include <typeinfo>
 #include <limits>
-#include <boost/type_index.hpp>
 
 #include <cadmium/engine/pdevs_engine_helpers.hpp>
 #include <cadmium/modeling/coupling.hpp>
@@ -36,7 +35,6 @@
 #include <cadmium/concept/coupled_model_assert.hpp>
 #include <cadmium/engine/pdevs_simulator.hpp>
 #include <cadmium/logger/common_loggers.hpp>
-
 
 namespace cadmium {
     namespace engine {
@@ -51,7 +49,6 @@ namespace cadmium {
          * There is never a rollback.
          * Each call to advanceSimulation advances internally a step and outputs are collected in separate method.
          */
-
 
             //TODO: migrate specialization FEL behavior from CDBoost. At this point, there is no parametrized FEL.
 
@@ -81,7 +78,6 @@ namespace cadmium {
             in_bags_type _inbox;
             out_bags_type _outbox;
 
-
         public:
             using model_type=MODEL<TIME>;
             /**
@@ -92,7 +88,7 @@ namespace cadmium {
 
                 //logging data
                 std::ostringstream oss;
-                oss << boost::typeindex::type_id<MODEL<TIME>>().pretty_name();
+                oss << typeid(MODEL<TIME>).name();
                 _model_id = oss.str();
                 LOGGER::template log<cadmium::logger::logger_info, cadmium::logger::coor_info_init>(t, _model_id);
 
@@ -178,7 +174,5 @@ namespace cadmium {
         };
     }
 }
-
-
 
 #endif // CADMIUM_PDEVS_COORDINATOR_H
