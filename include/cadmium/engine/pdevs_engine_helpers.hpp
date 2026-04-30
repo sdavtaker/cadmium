@@ -163,8 +163,9 @@ struct collect_messages_by_eoc_impl {
       typename std::tuple_element<S - 1, EOC>::type::submodel_output_port;
 
   static void fill(OUT_BAG &messages, CST &cst) {
-    auto from_bag = get_engine_by_model<submodel_from, CST>(cst).outbox();
-    auto &from_messages = get_messages<submodel_output_port>(from_bag);
+    const auto &from_bag =
+        get_engine_by_model<submodel_from, CST>(cst).outbox();
+    const auto &from_messages = get_messages<submodel_output_port>(from_bag);
     auto &to_messages = get_messages<external_output_port>(messages);
     to_messages.insert(to_messages.end(), from_messages.begin(),
                        from_messages.end());
@@ -220,10 +221,8 @@ struct route_internal_coupled_messages_on_subcoordinators_impl {
         get_engine_by_model<from_model, CST>(engines);
     to_model_type &to_engine = get_engine_by_model<to_model, CST>(engines);
 
-    auto &from_messages = cadmium::get_messages<from_port>(from_engine._outbox);
-    auto &to_messages = cadmium::get_messages<to_port>(to_engine._inbox);
-    to_messages.insert(to_messages.end(), from_messages.begin(),
-                       from_messages.end());
+    const auto &from_messages = from_engine.template outbox_port<from_port>();
+    to_engine.template append_to_inbox<to_port>(from_messages);
 
     std::ostringstream oss;
     logger::implode(oss, from_messages);
@@ -262,10 +261,8 @@ struct route_external_input_coupled_messages_on_subcoordinators_impl {
       using to_port = typename current_EIC::submodel_input_port;
 
       auto &to_engine = get_engine_by_model<to_model, CST>(engines);
-      auto &from_messages = cadmium::get_messages<from_port>(inbox);
-      auto &to_messages = cadmium::get_messages<to_port>(to_engine._inbox);
-      to_messages.insert(to_messages.end(), from_messages.begin(),
-                         from_messages.end());
+      const auto &from_messages = cadmium::get_messages<from_port>(inbox);
+      to_engine.template append_to_inbox<to_port>(from_messages);
 
       std::ostringstream oss;
       logger::implode(oss, from_messages);

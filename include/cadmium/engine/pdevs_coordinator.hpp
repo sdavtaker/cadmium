@@ -60,12 +60,10 @@ class coordinator {
   TIME _next{};
   subcoordinators_type _subcoordinators;
   std::string _model_id{};
-
-public:
-  // TODO: set boxes back to private
   in_bags_type _inbox{};
   out_bags_type _outbox{};
 
+public:
   using model_type = MODEL<TIME>;
 
   void init(TIME t) {
@@ -100,7 +98,18 @@ public:
     }
   }
 
-  out_bags_type outbox() const noexcept { return _outbox; }
+  const out_bags_type &outbox() const noexcept { return _outbox; }
+
+  template <typename PORT>
+  const std::vector<typename PORT::message_type> &outbox_port() const noexcept {
+    return cadmium::get_messages<PORT>(_outbox);
+  }
+
+  template <typename PORT>
+  void append_to_inbox(const std::vector<typename PORT::message_type> &msgs) {
+    auto &bag = cadmium::get_messages<PORT>(_inbox);
+    bag.insert(bag.end(), msgs.begin(), msgs.end());
+  }
 
   void advance_simulation(const TIME &t) {
     _outbox = out_bags_type{};

@@ -83,7 +83,7 @@ SCENARIO(
     auto s = make_sim();
     s.init(0.0f);
     WHEN("add messages are delivered and simulation is advanced to time 3") {
-      s._inbox = make_input({1, 2, 3, 4}, false);
+      s.inbox() = make_input({1, 2, 3, 4}, false);
       s.advance_simulation(3.0f);
       THEN("next remains infinity because no reset was received") {
         CHECK(s.next() == std::numeric_limits<float>::infinity());
@@ -99,10 +99,10 @@ SCENARIO("dynamic accumulator simulator schedules internal transition when "
         "reset at time 4") {
     auto s = make_sim();
     s.init(0.0f);
-    s._inbox = make_input({1, 2, 3, 4}, false);
+    s.inbox() = make_input({1, 2, 3, 4}, false);
     s.advance_simulation(3.0f);
     WHEN("a reset message arrives at time 4") {
-      s._inbox = make_input({}, true);
+      s.inbox() = make_input({}, true);
       s.advance_simulation(4.0f);
       THEN("next is scheduled at time 4") { CHECK(s.next() == 4.0f); }
     }
@@ -116,9 +116,9 @@ SCENARIO("dynamic accumulator simulator output is the sum of all received add "
         "time 4") {
     auto s = make_sim();
     s.init(0.0f);
-    s._inbox = make_input({1, 2, 3, 4}, false);
+    s.inbox() = make_input({1, 2, 3, 4}, false);
     s.advance_simulation(3.0f);
-    s._inbox = make_input({}, true);
+    s.inbox() = make_input({}, true);
     s.advance_simulation(4.0f);
     WHEN("outputs are collected at time 4") {
       s.collect_outputs(4.0f);
@@ -140,14 +140,14 @@ SCENARIO("dynamic accumulator simulator internal transition clears the counter "
         "then drained") {
     auto s = make_sim();
     s.init(0.0f);
-    s._inbox = make_input({}, true);
+    s.inbox() = make_input({}, true);
     s.advance_simulation(4.0f);
-    s._inbox =
+    s.inbox() =
         cadmium::dynamic::modeling::create_empty_message_bags<in_bags_type>();
     s.advance_simulation(4.0f);
     REQUIRE(s.next() == std::numeric_limits<float>::infinity());
     WHEN("a second reset arrives at time 5 with no add messages") {
-      s._inbox = make_input({}, true);
+      s.inbox() = make_input({}, true);
       s.advance_simulation(5.0f);
       REQUIRE(s.next() == 5.0f);
       s.collect_outputs(5.0f);

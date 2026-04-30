@@ -41,11 +41,10 @@ template <typename TIME> class simulator : public engine<TIME> {
   std::shared_ptr<cadmium::dynamic::modeling::atomic_abstract<TIME>> _model;
   TIME _last;
   TIME _next;
-
-public:
   cadmium::dynamic::message_bags _outbox;
   cadmium::dynamic::message_bags _inbox;
 
+public:
   simulator() = delete;
 
   explicit simulator(

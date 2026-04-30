@@ -56,11 +56,10 @@ class coordinator : public cadmium::dynamic::engine::engine<TIME> {
   external_couplings<TIME> _external_output_couplings;
   external_couplings<TIME> _external_input_couplings;
   internal_couplings<TIME> _internal_coupligns;
-
-public:
   dynamic::message_bags _inbox;
   dynamic::message_bags _outbox;
 
+public:
   using model_type = typename cadmium::dynamic::modeling::coupled<TIME>;
 
   coordinator() = delete;
