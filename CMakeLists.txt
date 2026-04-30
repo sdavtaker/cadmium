@@ -50,7 +50,7 @@ if(CADMIUM_BUILD_TESTS)
     find_package(Catch2 CONFIG REQUIRED)
     enable_testing()
 
-    # Batch 0: concept-satisfaction tests (replaces test-compile/ harness)
+    # Batch 0: concept-satisfaction tests (memory-vault-dwr)
     add_executable(pdevs_concepts_test test/pdevs_concepts_test.cpp)
     target_link_libraries(pdevs_concepts_test PRIVATE cadmium Catch2::Catch2WithMain)
     add_test(NAME pdevs_concepts_test COMMAND pdevs_concepts_test)
@@ -91,9 +91,8 @@ if(CADMIUM_BUILD_TESTS)
 endif()
 
 # ----------------------------------------------------------------------------
-# Compile-check tests — replaced by pdevs_concepts_test (memory-vault-dwr)
-# The test-compile/ directory is kept for historical reference but is no
-# longer wired into the build.
+# Compile-check tests replaced by pdevs_concepts_test (memory-vault-dwr).
+# The old test-compile/ directory has been deleted.
 # ----------------------------------------------------------------------------
 
 # ----------------------------------------------------------------------------

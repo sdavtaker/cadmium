@@ -33,6 +33,7 @@
 #include <type_traits>
 
 #include <cadmium/modeling/message_bag.hpp>
+#include <cadmium/modeling/message_box.hpp>
 #include <cadmium/modeling/ports.hpp>
 
 namespace cadmium::concepts {
@@ -224,6 +225,40 @@ concept CoupledModel = requires {
 };
 
 } // namespace pdevs
+
+// ─── DEVS atomic model concept ───────────────────────────────────────────────
+
+namespace devs {
+
+/**
+ * AtomicModel<M, TIME> for the classic DEVS formalism.
+ * Differences from PDEVS: external_transition takes a message_box (not bags),
+ * and there is no confluence_transition.
+ */
+template <typename M, typename TIME>
+concept AtomicModel =
+    Time<TIME> &&
+    requires {
+      typename M::state_type;
+      typename M::input_ports;
+      typename M::output_ports;
+      requires detail::all_unique_types_v<typename M::input_ports>;
+      requires detail::all_unique_types_v<typename M::output_ports>;
+    } &&
+    requires(M m, TIME e,
+             typename make_message_box<typename M::input_ports>::type in_box) {
+      { m.state } -> std::same_as<typename M::state_type &>;
+      { m.internal_transition() } -> std::same_as<void>;
+      { m.external_transition(e, in_box) } -> std::same_as<void>;
+      {
+        m.output()
+      } -> std::same_as<
+            typename make_message_box<typename M::output_ports>::type>;
+      { m.time_advance() } -> std::same_as<TIME>;
+    };
+
+} // namespace devs
+
 } // namespace cadmium::concepts
 
 #endif // CADMIUM_PDEVS_CONCEPTS_HPP

@@ -35,18 +35,22 @@
 #include <catch2/catch_test_macros.hpp>
 #include <tuple>
 
+#include <cadmium/basic_model/devs/generator.hpp>
+#include <cadmium/basic_model/devs/passive.hpp>
 #include <cadmium/basic_model/pdevs/accumulator.hpp>
 #include <cadmium/basic_model/pdevs/generator.hpp>
 #include <cadmium/basic_model/pdevs/passive.hpp>
 #include <cadmium/concepts/pdevs_concepts.hpp>
 #include <cadmium/modeling/coupling.hpp>
 #include <cadmium/modeling/message_bag.hpp>
+#include <cadmium/modeling/message_box.hpp>
 #include <cadmium/modeling/ports.hpp>
 
 namespace {
 
 using cadmium::concepts::pdevs::AtomicModel;
 using cadmium::concepts::pdevs::CoupledModel;
+namespace devs_concepts = cadmium::concepts::devs;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Valid atomic models
@@ -593,4 +597,276 @@ SCENARIO("coupled model with repeated output port type does not satisfy "
          "CoupledModel",
          "[pdevs][concepts][coupled][negative]") {
   STATIC_REQUIRE(!CoupledModel<coupled_repeated_output<float>>);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DEVS AtomicModel concept — fixture types
+// ═══════════════════════════════════════════════════════════════════════════
+
+namespace devs_fixtures {
+
+template <typename TIME> struct valid_devs {
+  struct in : public cadmium::in_port<int> {};
+  struct out : public cadmium::out_port<int> {};
+  using state_type = int;
+  state_type state = 0;
+  using input_ports = std::tuple<in>;
+  using output_ports = std::tuple<out>;
+  void internal_transition() {}
+  void
+  external_transition(TIME,
+                      typename cadmium::make_message_box<input_ports>::type) {}
+  typename cadmium::make_message_box<output_ports>::type output() const {
+    return {};
+  }
+  TIME time_advance() const { return TIME{}; }
+};
+
+template <typename TIME> struct devs_no_state_type {
+  struct in : public cadmium::in_port<int> {};
+  struct out : public cadmium::out_port<int> {};
+  int state = 0;
+  using input_ports = std::tuple<in>;
+  using output_ports = std::tuple<out>;
+  void internal_transition() {}
+  void
+  external_transition(TIME,
+                      typename cadmium::make_message_box<input_ports>::type) {}
+  typename cadmium::make_message_box<output_ports>::type output() const {
+    return {};
+  }
+  TIME time_advance() const { return TIME{}; }
+};
+
+template <typename TIME> struct devs_no_state_var {
+  struct in : public cadmium::in_port<int> {};
+  struct out : public cadmium::out_port<int> {};
+  using state_type = int;
+  using input_ports = std::tuple<in>;
+  using output_ports = std::tuple<out>;
+  void internal_transition() {}
+  void
+  external_transition(TIME,
+                      typename cadmium::make_message_box<input_ports>::type) {}
+  typename cadmium::make_message_box<output_ports>::type output() const {
+    return {};
+  }
+  TIME time_advance() const { return TIME{}; }
+};
+
+template <typename TIME> struct devs_no_input_ports {
+  struct out : public cadmium::out_port<int> {};
+  using state_type = int;
+  state_type state = 0;
+  using output_ports = std::tuple<out>;
+  void internal_transition() {}
+  typename cadmium::make_message_box<output_ports>::type output() const {
+    return {};
+  }
+  TIME time_advance() const { return TIME{}; }
+};
+
+template <typename TIME> struct devs_no_output_ports {
+  struct in : public cadmium::in_port<int> {};
+  using state_type = int;
+  state_type state = 0;
+  using input_ports = std::tuple<in>;
+  void internal_transition() {}
+  void
+  external_transition(TIME,
+                      typename cadmium::make_message_box<input_ports>::type) {}
+  TIME time_advance() const { return TIME{}; }
+};
+
+template <typename TIME> struct devs_no_internal_transition {
+  struct in : public cadmium::in_port<int> {};
+  struct out : public cadmium::out_port<int> {};
+  using state_type = int;
+  state_type state = 0;
+  using input_ports = std::tuple<in>;
+  using output_ports = std::tuple<out>;
+  void
+  external_transition(TIME,
+                      typename cadmium::make_message_box<input_ports>::type) {}
+  typename cadmium::make_message_box<output_ports>::type output() const {
+    return {};
+  }
+  TIME time_advance() const { return TIME{}; }
+};
+
+template <typename TIME> struct devs_no_external_transition {
+  struct in : public cadmium::in_port<int> {};
+  struct out : public cadmium::out_port<int> {};
+  using state_type = int;
+  state_type state = 0;
+  using input_ports = std::tuple<in>;
+  using output_ports = std::tuple<out>;
+  void internal_transition() {}
+  typename cadmium::make_message_box<output_ports>::type output() const {
+    return {};
+  }
+  TIME time_advance() const { return TIME{}; }
+};
+
+template <typename TIME> struct devs_no_output_function {
+  struct in : public cadmium::in_port<int> {};
+  struct out : public cadmium::out_port<int> {};
+  using state_type = int;
+  state_type state = 0;
+  using input_ports = std::tuple<in>;
+  using output_ports = std::tuple<out>;
+  void internal_transition() {}
+  void
+  external_transition(TIME,
+                      typename cadmium::make_message_box<input_ports>::type) {}
+  TIME time_advance() const { return TIME{}; }
+};
+
+template <typename TIME> struct devs_no_time_advance {
+  struct in : public cadmium::in_port<int> {};
+  struct out : public cadmium::out_port<int> {};
+  using state_type = int;
+  state_type state = 0;
+  using input_ports = std::tuple<in>;
+  using output_ports = std::tuple<out>;
+  void internal_transition() {}
+  void
+  external_transition(TIME,
+                      typename cadmium::make_message_box<input_ports>::type) {}
+  typename cadmium::make_message_box<output_ports>::type output() const {
+    return {};
+  }
+};
+
+template <typename TIME> struct devs_repeated_input_port {
+  struct in1 : public cadmium::in_port<int> {};
+  struct out : public cadmium::out_port<int> {};
+  using state_type = int;
+  state_type state = 0;
+  using input_ports = std::tuple<in1, in1>;
+  using output_ports = std::tuple<out>;
+  void internal_transition() {}
+  void
+  external_transition(TIME,
+                      typename cadmium::make_message_box<input_ports>::type) {}
+  typename cadmium::make_message_box<output_ports>::type output() const {
+    return {};
+  }
+  TIME time_advance() const { return TIME{}; }
+};
+
+template <typename TIME> struct devs_repeated_output_port {
+  struct in : public cadmium::in_port<int> {};
+  struct out : public cadmium::out_port<int> {};
+  using state_type = int;
+  state_type state = 0;
+  using input_ports = std::tuple<in>;
+  using output_ports = std::tuple<out, out>;
+  void internal_transition() {}
+  void
+  external_transition(TIME,
+                      typename cadmium::make_message_box<input_ports>::type) {}
+  typename cadmium::make_message_box<output_ports>::type output() const {
+    return {};
+  }
+  TIME time_advance() const { return TIME{}; }
+};
+
+} // namespace devs_fixtures
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DEVS AtomicModel concept — positive
+// ═══════════════════════════════════════════════════════════════════════════
+
+SCENARIO("minimal valid DEVS atomic model satisfies devs::AtomicModel",
+         "[devs][concepts][atomic][positive]") {
+  STATIC_REQUIRE(
+      devs_concepts::AtomicModel<devs_fixtures::valid_devs<float>, float>);
+}
+
+SCENARIO("DEVS generator satisfies devs::AtomicModel",
+         "[devs][concepts][atomic][positive]") {
+  STATIC_REQUIRE(devs_concepts::AtomicModel<
+                 cadmium::basic_models::devs::generator<float, float>, float>);
+}
+
+SCENARIO("DEVS passive satisfies devs::AtomicModel",
+         "[devs][concepts][atomic][positive]") {
+  STATIC_REQUIRE(devs_concepts::AtomicModel<
+                 cadmium::basic_models::devs::passive<float, float>, float>);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DEVS AtomicModel concept — negative
+// ═══════════════════════════════════════════════════════════════════════════
+
+SCENARIO("DEVS model missing state_type does not satisfy devs::AtomicModel",
+         "[devs][concepts][atomic][negative]") {
+  STATIC_REQUIRE(
+      !devs_concepts::AtomicModel<devs_fixtures::devs_no_state_type<float>,
+                                  float>);
+}
+
+SCENARIO("DEVS model missing state variable does not satisfy devs::AtomicModel",
+         "[devs][concepts][atomic][negative]") {
+  STATIC_REQUIRE(
+      !devs_concepts::AtomicModel<devs_fixtures::devs_no_state_var<float>,
+                                  float>);
+}
+
+SCENARIO("DEVS model missing input_ports does not satisfy devs::AtomicModel",
+         "[devs][concepts][atomic][negative]") {
+  STATIC_REQUIRE(
+      !devs_concepts::AtomicModel<devs_fixtures::devs_no_input_ports<float>,
+                                  float>);
+}
+
+SCENARIO("DEVS model missing output_ports does not satisfy devs::AtomicModel",
+         "[devs][concepts][atomic][negative]") {
+  STATIC_REQUIRE(
+      !devs_concepts::AtomicModel<devs_fixtures::devs_no_output_ports<float>,
+                                  float>);
+}
+
+SCENARIO(
+    "DEVS model missing internal_transition does not satisfy devs::AtomicModel",
+    "[devs][concepts][atomic][negative]") {
+  STATIC_REQUIRE(!devs_concepts::AtomicModel<
+                 devs_fixtures::devs_no_internal_transition<float>, float>);
+}
+
+SCENARIO(
+    "DEVS model missing external_transition does not satisfy devs::AtomicModel",
+    "[devs][concepts][atomic][negative]") {
+  STATIC_REQUIRE(!devs_concepts::AtomicModel<
+                 devs_fixtures::devs_no_external_transition<float>, float>);
+}
+
+SCENARIO(
+    "DEVS model missing output function does not satisfy devs::AtomicModel",
+    "[devs][concepts][atomic][negative]") {
+  STATIC_REQUIRE(
+      !devs_concepts::AtomicModel<devs_fixtures::devs_no_output_function<float>,
+                                  float>);
+}
+
+SCENARIO("DEVS model missing time_advance does not satisfy devs::AtomicModel",
+         "[devs][concepts][atomic][negative]") {
+  STATIC_REQUIRE(
+      !devs_concepts::AtomicModel<devs_fixtures::devs_no_time_advance<float>,
+                                  float>);
+}
+
+SCENARIO("DEVS model with repeated input port type does not satisfy "
+         "devs::AtomicModel",
+         "[devs][concepts][atomic][negative]") {
+  STATIC_REQUIRE(!devs_concepts::AtomicModel<
+                 devs_fixtures::devs_repeated_input_port<float>, float>);
+}
+
+SCENARIO("DEVS model with repeated output port type does not satisfy "
+         "devs::AtomicModel",
+         "[devs][concepts][atomic][negative]") {
+  STATIC_REQUIRE(!devs_concepts::AtomicModel<
+                 devs_fixtures::devs_repeated_output_port<float>, float>);
 }
