@@ -24,8 +24,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <catch2/catch_test_macros.hpp>
 #include <any>
+#include <catch2/catch_test_macros.hpp>
 #include <limits>
 
 #include <cadmium/basic_model/pdevs/accumulator.hpp>
@@ -35,90 +35,129 @@
 #include <cadmium/modeling/dynamic_message_bag.hpp>
 #include <cadmium/modeling/dynamic_model_translator.hpp>
 
-template<typename TIME>
+template <typename TIME>
 using int_accumulator = cadmium::basic_models::pdevs::accumulator<int, TIME>;
-using int_accumulator_defs = cadmium::basic_models::pdevs::accumulator_defs<int>;
+using int_accumulator_defs =
+    cadmium::basic_models::pdevs::accumulator_defs<int>;
 
 using input_ports = int_accumulator<float>::input_ports;
 using in_bags_type = typename cadmium::make_message_bags<input_ports>::type;
 
 static auto make_sim() {
-    auto model = cadmium::dynamic::translate::make_dynamic_atomic_model<int_accumulator, float>();
-    return cadmium::dynamic::engine::simulator<float, cadmium::logger::not_logger>(model);
+  auto model =
+      cadmium::dynamic::translate::make_dynamic_atomic_model<int_accumulator,
+                                                             float>();
+  return cadmium::dynamic::engine::simulator<float>(model);
 }
 
-static cadmium::dynamic::message_bags make_input(std::initializer_list<int> add_vals, bool reset) {
-    cadmium::message_bag<int_accumulator_defs::add>   bag_add;
-    cadmium::message_bag<int_accumulator_defs::reset> bag_reset;
-    bag_add.messages.assign(add_vals);
-    if (reset) bag_reset.messages.emplace_back();
-    cadmium::dynamic::message_bags bags;
-    bags[typeid(int_accumulator_defs::add)]   = bag_add;
-    bags[typeid(int_accumulator_defs::reset)] = bag_reset;
-    return bags;
+static cadmium::dynamic::message_bags
+make_input(std::initializer_list<int> add_vals, bool reset) {
+  cadmium::message_bag<int_accumulator_defs::add> bag_add;
+  cadmium::message_bag<int_accumulator_defs::reset> bag_reset;
+  bag_add.messages.assign(add_vals);
+  if (reset)
+    bag_reset.messages.emplace_back();
+  cadmium::dynamic::message_bags bags;
+  bags[typeid(int_accumulator_defs::add)] = bag_add;
+  bags[typeid(int_accumulator_defs::reset)] = bag_reset;
+  return bags;
 }
 
-TEST_CASE("dynamic accumulator simulator initialises passive", "[dynamic][simulator]") {
+SCENARIO("dynamic accumulator simulator starts in passive state",
+         "[dynamic][simulator]") {
+  GIVEN("a dynamic accumulator simulator initialised at time 0") {
     auto s = make_sim();
     s.init(0.0f);
-    CHECK(s.next() == std::numeric_limits<float>::infinity());
+    WHEN("next is queried") {
+      THEN("it is infinity") {
+        CHECK(s.next() == std::numeric_limits<float>::infinity());
+      }
+    }
+  }
 }
 
-TEST_CASE("dynamic accumulator simulator external transition on add stays passive", "[dynamic][simulator]") {
+SCENARIO(
+    "dynamic accumulator simulator receiving only add messages stays passive",
+    "[dynamic][simulator]") {
+  GIVEN("a dynamic accumulator simulator initialised at time 0") {
+    auto s = make_sim();
+    s.init(0.0f);
+    WHEN("add messages are delivered and simulation is advanced to time 3") {
+      s._inbox = make_input({1, 2, 3, 4}, false);
+      s.advance_simulation(3.0f);
+      THEN("next remains infinity because no reset was received") {
+        CHECK(s.next() == std::numeric_limits<float>::infinity());
+      }
+    }
+  }
+}
+
+SCENARIO("dynamic accumulator simulator schedules internal transition when "
+         "reset is received",
+         "[dynamic][simulator]") {
+  GIVEN("a dynamic accumulator that has received add messages and is then "
+        "reset at time 4") {
     auto s = make_sim();
     s.init(0.0f);
     s._inbox = make_input({1, 2, 3, 4}, false);
     s.advance_simulation(3.0f);
-    CHECK(s.next() == std::numeric_limits<float>::infinity());
+    WHEN("a reset message arrives at time 4") {
+      s._inbox = make_input({}, true);
+      s.advance_simulation(4.0f);
+      THEN("next is scheduled at time 4") { CHECK(s.next() == 4.0f); }
+    }
+  }
 }
 
-TEST_CASE("dynamic accumulator simulator reset triggers internal transition", "[dynamic][simulator]") {
+SCENARIO("dynamic accumulator simulator output is the sum of all received add "
+         "messages",
+         "[dynamic][simulator]") {
+  GIVEN("a dynamic accumulator that accumulated 1+2+3+4 and was then reset at "
+        "time 4") {
     auto s = make_sim();
     s.init(0.0f);
     s._inbox = make_input({1, 2, 3, 4}, false);
     s.advance_simulation(3.0f);
     s._inbox = make_input({}, true);
     s.advance_simulation(4.0f);
-    CHECK(s.next() == 4.0f);
+    WHEN("outputs are collected at time 4") {
+      s.collect_outputs(4.0f);
+      auto o = s.outbox();
+      auto out = std::any_cast<cadmium::message_bag<int_accumulator_defs::sum>>(
+          o.at(typeid(int_accumulator_defs::sum)));
+      THEN("the sum port contains exactly 10") {
+        REQUIRE(out.messages.size() == 1);
+        CHECK(out.messages.at(0) == 10);
+      }
+    }
+  }
 }
 
-TEST_CASE("dynamic accumulator simulator output is sum of add messages", "[dynamic][simulator]") {
-    auto s = make_sim();
-    s.init(0.0f);
-    s._inbox = make_input({1, 2, 3, 4}, false);
-    s.advance_simulation(3.0f);
-    s._inbox = make_input({}, true);
-    s.advance_simulation(4.0f);
-
-    s.collect_outputs(4.0f);
-    auto o = s.outbox();
-    auto out = std::any_cast<cadmium::message_bag<int_accumulator_defs::sum>>(
-        o.at(typeid(int_accumulator_defs::sum)));
-    REQUIRE(out.messages.size() == 1);
-    CHECK(out.messages.at(0) == 10);
-}
-
-TEST_CASE("dynamic accumulator simulator confluence: add then reset gives correct sum", "[dynamic][simulator]") {
+SCENARIO("dynamic accumulator simulator internal transition clears the counter "
+         "before the next reset",
+         "[dynamic][simulator]") {
+  GIVEN("a dynamic accumulator reset at time 4 with no prior add messages, "
+        "then drained") {
     auto s = make_sim();
     s.init(0.0f);
     s._inbox = make_input({}, true);
     s.advance_simulation(4.0f);
-
-    in_bags_type empty{};
-    cadmium::dynamic::message_bags empty_dyn =
+    s._inbox =
         cadmium::dynamic::modeling::create_empty_message_bags<in_bags_type>();
-    s._inbox = empty_dyn;
     s.advance_simulation(4.0f);
-    CHECK(s.next() == std::numeric_limits<float>::infinity());
-
-    s._inbox = make_input({}, true);
-    s.advance_simulation(5.0f);
-    CHECK(s.next() == 5.0f);
-
-    s.collect_outputs(5.0f);
-    auto o = s.outbox();
-    auto out = std::any_cast<cadmium::message_bag<int_accumulator_defs::sum>>(
-        o.at(typeid(int_accumulator_defs::sum)));
-    REQUIRE(out.messages.size() == 1);
-    CHECK(out.messages.at(0) == 0);
+    REQUIRE(s.next() == std::numeric_limits<float>::infinity());
+    WHEN("a second reset arrives at time 5 with no add messages") {
+      s._inbox = make_input({}, true);
+      s.advance_simulation(5.0f);
+      REQUIRE(s.next() == 5.0f);
+      s.collect_outputs(5.0f);
+      auto o = s.outbox();
+      auto out = std::any_cast<cadmium::message_bag<int_accumulator_defs::sum>>(
+          o.at(typeid(int_accumulator_defs::sum)));
+      THEN("the output sum is 0") {
+        REQUIRE(out.messages.size() == 1);
+        CHECK(out.messages.at(0) == 0);
+      }
+    }
+  }
 }

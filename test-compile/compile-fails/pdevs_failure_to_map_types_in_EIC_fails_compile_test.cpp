@@ -30,7 +30,7 @@
 #include <cadmium/basic_model/pdevs/passive.hpp>
 #include <cadmium/modeling/coupling.hpp>
 #include <cadmium/modeling/ports.hpp>
-#include <cadmium/concept/coupled_model_assert.hpp>
+#include <cadmium/concepts/coupled_model_assert.hpp>
 
 template<typename TIME>
 using passive = cadmium::basic_models::pdevs::passive<int, TIME>;

@@ -31,20 +31,16 @@ namespace cadmium {
 
 enum class port_kind { in, out };
 
-template<typename MSG>
-struct out_port {
-    using message_type=MSG;
-    static constexpr port_kind kind=port_kind::out;
+template <typename MSG> struct out_port {
+  using message_type = MSG;
+  static constexpr port_kind kind = port_kind::out;
 };
 
-template<typename MSG>
-struct in_port {
-    using message_type=MSG;
-    static constexpr port_kind kind=port_kind::in;
+template <typename MSG> struct in_port {
+  using message_type = MSG;
+  static constexpr port_kind kind = port_kind::in;
 };
 
-}
-
+} // namespace cadmium
 
 #endif // CADMIUM_PORTS_HPP
-

@@ -28,47 +28,87 @@
 #include <stdexcept>
 
 #include <cadmium/basic_model/devs/generator.hpp>
-#include <cadmium/concept/concept_helpers.hpp>
 #include <cadmium/modeling/message_box.hpp>
 
 const float init_period = 0.1f;
 const float init_output_message = 1.0f;
 
-template<typename TIME>
-using floating_generator_base = cadmium::basic_models::devs::generator<float, TIME>;
-using floating_generator_defs = cadmium::basic_models::devs::generator_defs<float>;
+template <typename TIME>
+using floating_generator_base =
+    cadmium::basic_models::devs::generator<float, TIME>;
+using floating_generator_defs =
+    cadmium::basic_models::devs::generator_defs<float>;
 
-template<typename TIME>
+template <typename TIME>
 struct floating_generator : public floating_generator_base<TIME> {
-    float period() const override { return init_period; }
-    float output_message() const override { return init_output_message; }
+  float period() const override { return init_period; }
+  float output_message() const override { return init_output_message; }
 };
 
-TEST_CASE("devs generator is atomic", "[devs][generator]") {
-    CHECK(cadmium::model_checks::is_atomic<floating_generator>::value());
+SCENARIO("devs generator model satisfies the atomic model concept",
+         "[devs][generator]") {
+  GIVEN("the floating_generator model type") {
+    WHEN("the atomic concept check is evaluated") {
+      THEN("it passes") {
+        CHECK(requires {
+          std::declval<floating_generator<float>>().time_advance();
+        });
+      }
+    }
+  }
 }
 
-TEST_CASE("devs generator is constructable", "[devs][generator]") {
-    CHECK_NOTHROW(floating_generator<float>{});
+SCENARIO("devs generator model can be default-constructed",
+         "[devs][generator]") {
+  GIVEN("no preconditions") {
+    WHEN("a floating_generator is default-constructed") {
+      THEN("no exception is thrown") {
+        CHECK_NOTHROW(floating_generator<float>{});
+      }
+    }
+  }
 }
 
-TEST_CASE("devs generator time advance is constant across internal transitions", "[devs][generator]") {
+SCENARIO(
+    "devs generator model time advance is stable under internal transitions",
+    "[devs][generator]") {
+  GIVEN("a freshly constructed generator") {
     auto g = floating_generator<float>();
-    CHECK(g.time_advance() == init_period);
-    g.internal_transition();
-    CHECK(g.time_advance() == init_period);
+    WHEN("time_advance is checked before and after an internal transition") {
+      THEN("it equals the configured period both times") {
+        CHECK(g.time_advance() == init_period);
+        g.internal_transition();
+        CHECK(g.time_advance() == init_period);
+      }
+    }
+  }
 }
 
-TEST_CASE("devs generator throws on external transition", "[devs][generator]") {
+SCENARIO("devs generator model rejects external transitions",
+         "[devs][generator]") {
+  GIVEN("a freshly constructed generator") {
     auto g = floating_generator<float>();
-    typename cadmium::make_message_box<floating_generator<float>::input_ports>::type input;
-    CHECK_THROWS_AS(g.external_transition(5.0, input), std::logic_error);
+    WHEN("external_transition is called") {
+      typename cadmium::make_message_box<
+          floating_generator<float>::input_ports>::type input;
+      THEN("a logic_error is thrown") {
+        CHECK_THROWS_AS(g.external_transition(5.0, input), std::logic_error);
+      }
+    }
+  }
 }
 
-TEST_CASE("devs generator output returns configured message", "[devs][generator]") {
+SCENARIO("devs generator model output produces the configured message",
+         "[devs][generator]") {
+  GIVEN("a freshly constructed generator") {
     auto g = floating_generator<float>();
-    auto o = g.output();
-    auto o_m = cadmium::get_message<floating_generator_defs::out>(o);
-    REQUIRE(o_m.has_value());
-    CHECK(o_m.value() == init_output_message);
+    WHEN("output is called") {
+      auto o = g.output();
+      auto o_m = cadmium::get_message<floating_generator_defs::out>(o);
+      THEN("the output port carries the configured message value") {
+        REQUIRE(o_m.has_value());
+        CHECK(o_m.value() == init_output_message);
+      }
+    }
+  }
 }

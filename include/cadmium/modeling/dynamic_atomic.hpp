@@ -27,127 +27,135 @@
 #ifndef CADMIUM_DYNAMIC_ATOMIC_HPP
 #define CADMIUM_DYNAMIC_ATOMIC_HPP
 
-#include <typeinfo>
-#include <map>
 #include <any>
-#include <cadmium/modeling/dynamic_model.hpp>
+#include <cadmium/concepts/atomic_model_assert.hpp>
+#include <cadmium/concepts/pdevs_concepts.hpp>
 #include <cadmium/modeling/dynamic_message_bag.hpp>
-#include <cadmium/concept/concept_helpers.hpp>
-#include <cadmium/concept/atomic_model_assert.hpp>
+#include <cadmium/modeling/dynamic_model.hpp>
 #include <cadmium/modeling/dynamic_models_helpers.hpp>
+#include <map>
+#include <typeinfo>
 
 namespace cadmium {
-    namespace dynamic {
-        namespace modeling {
+namespace dynamic {
+namespace modeling {
 
-            /**
-             * @brief atomic is a derived class from the base classes atomic_bastract and ATOMIC<TIME>
-             * this allow using any ATOMIC<TIME> valid class with pointers as an atomic_abstract
-             * (first abase class) pointer.
-             *
-             * @details
-             * Because ATOMIC<TIME> methods arity are template dependent, this wrapper class uses
-             * cadmium::dynamic::message_bags as these methods parameter and it forwards a correct
-             * translation to the corresponding type in the wrapped ATOMIC<TIME> base class method.
-             *
-             * @tparam ATOMIC a valid atomic model class
-             * @tparam TIME a valid TIME class to use along with the atomic model class as ATOMIC<TIME>
-             */
-            template<template<typename T> class ATOMIC, typename TIME, typename... Args>
-            class atomic : public atomic_abstract<TIME>, public ATOMIC<TIME> {
-                cadmium::dynamic::modeling::Ports _input_ports;
-                cadmium::dynamic::modeling::Ports _output_ports;
+/**
+ * @brief atomic is a derived class from the base classes atomic_bastract and
+ * ATOMIC<TIME> this allow using any ATOMIC<TIME> valid class with pointers as
+ * an atomic_abstract (first abase class) pointer.
+ *
+ * @details
+ * Because ATOMIC<TIME> methods arity are template dependent, this wrapper class
+ * uses cadmium::dynamic::message_bags as these methods parameter and it
+ * forwards a correct translation to the corresponding type in the wrapped
+ * ATOMIC<TIME> base class method.
+ *
+ * @tparam ATOMIC a valid atomic model class
+ * @tparam TIME a valid TIME class to use along with the atomic model class as
+ * ATOMIC<TIME>
+ */
+template <template <typename T> class ATOMIC, typename TIME, typename... Args>
+class atomic : public atomic_abstract<TIME>, public ATOMIC<TIME> {
+  cadmium::dynamic::modeling::Ports _input_ports;
+  cadmium::dynamic::modeling::Ports _output_ports;
 
-                std::string _id;
+  std::string _id;
 
-            public:
-                using model_type=ATOMIC<TIME>;
+public:
+  using model_type = ATOMIC<TIME>;
 
-                using output_ports = typename model_type::output_ports;
-                using input_ports = typename model_type::input_ports;
+  using output_ports = typename model_type::output_ports;
+  using input_ports = typename model_type::input_ports;
 
-                // Model input and output types
-                using output_bags = typename make_message_bags<output_ports>::type;
-                using input_bags = typename make_message_bags<input_ports>::type;
+  // Model input and output types
+  using output_bags = typename make_message_bags<output_ports>::type;
+  using input_bags = typename make_message_bags<input_ports>::type;
 
-                atomic() {
-                    static_assert(cadmium::model_checks::is_atomic<ATOMIC>::value(), "This is not an atomic model");
-                    cadmium::model_checks::pdevs::atomic_model_assert<ATOMIC>();
-                    _id = typeid(model_type).name();
-                    _input_ports = cadmium::dynamic::modeling::create_dynamic_ports<input_ports>();
-                    _output_ports = cadmium::dynamic::modeling::create_dynamic_ports<output_ports>();
-                }
+  atomic() {
+    static_assert(cadmium::concepts::pdevs::AtomicModel<ATOMIC<TIME>, TIME>,
+                  "This is not an atomic model");
+    cadmium::model_checks::pdevs::atomic_model_assert<ATOMIC>();
+    _id = typeid(model_type).name();
+    _input_ports =
+        cadmium::dynamic::modeling::create_dynamic_ports<input_ports>();
+    _output_ports =
+        cadmium::dynamic::modeling::create_dynamic_ports<output_ports>();
+  }
 
-                atomic(const std::string& model_id, Args&&... args) : ATOMIC<TIME>(std::forward<Args>(args)...) {
-                    static_assert((bool)cadmium::model_checks::is_atomic<ATOMIC>::value, "This is not an atomic model");
-                    cadmium::model_checks::pdevs::atomic_model_assert<ATOMIC>();
-                    _id = model_id;
-                    _input_ports = cadmium::dynamic::modeling::create_dynamic_ports<input_ports>();
-                    _output_ports = cadmium::dynamic::modeling::create_dynamic_ports<output_ports>();
-                }
+  atomic(const std::string &model_id, Args &&...args)
+      : ATOMIC<TIME>(std::forward<Args>(args)...) {
+    static_assert(cadmium::concepts::pdevs::AtomicModel<ATOMIC<TIME>, TIME>,
+                  "This is not an atomic model");
+    cadmium::model_checks::pdevs::atomic_model_assert<ATOMIC>();
+    _id = model_id;
+    _input_ports =
+        cadmium::dynamic::modeling::create_dynamic_ports<input_ports>();
+    _output_ports =
+        cadmium::dynamic::modeling::create_dynamic_ports<output_ports>();
+  }
 
-                std::string get_id() const override {
-                    return _id;
-                }
+  std::string get_id() const override { return _id; }
 
-                cadmium::dynamic::modeling::Ports get_input_ports() const override {
-                    return _input_ports;
-                }
+  cadmium::dynamic::modeling::Ports get_input_ports() const override {
+    return _input_ports;
+  }
 
-                cadmium::dynamic::modeling::Ports get_output_ports() const override {
-                    return _output_ports;
-                }
+  cadmium::dynamic::modeling::Ports get_output_ports() const override {
+    return _output_ports;
+  }
 
-                std::string model_state_as_string() const override {
-                    std::ostringstream oss;
-                    oss << this->state;
-                    return oss.str();
-                }
+  std::string model_state_as_string() const override {
+    std::ostringstream oss;
+    oss << this->state;
+    return oss.str();
+  }
 
-                std::string messages_by_port_as_string(cadmium::dynamic::message_bags outbox) const override {
-                    std::ostringstream oss;
-                    print_dynamic_messages_by_port<output_ports>(oss, outbox);
-                    return oss.str();
-                }
+  std::string messages_by_port_as_string(
+      cadmium::dynamic::message_bags outbox) const override {
+    std::ostringstream oss;
+    print_dynamic_messages_by_port<output_ports>(oss, outbox);
+    return oss.str();
+  }
 
-                // This method must be declared to declare all atomic_abstract virtual methods are defined
-                void internal_transition() override {
-                    model_type::internal_transition();
-                }
+  // This method must be declared to declare all atomic_abstract virtual methods
+  // are defined
+  void internal_transition() override { model_type::internal_transition(); }
 
-                void external_transition(TIME e, cadmium::dynamic::message_bags bags) override {
-                    // Translate from dynamic_message_bag to template dependent input_bags type.
-                    input_bags tuple_bags;
-                    cadmium::dynamic::modeling::fill_bags_from_map(bags, tuple_bags);
+  void external_transition(TIME e,
+                           cadmium::dynamic::message_bags bags) override {
+    // Translate from dynamic_message_bag to template dependent input_bags type.
+    input_bags tuple_bags;
+    cadmium::dynamic::modeling::fill_bags_from_map(bags, tuple_bags);
 
-                    // Forwards the translated value to the wrapped model_type class method.
-                    model_type::external_transition(e, tuple_bags);
-                }
+    // Forwards the translated value to the wrapped model_type class method.
+    model_type::external_transition(e, tuple_bags);
+  }
 
-                void confluence_transition(TIME e, cadmium::dynamic::message_bags bags) override {
-                    // Translate from dynamic_message_bag to template dependent input_bags type.
-                    input_bags tuple_bags;
-                    cadmium::dynamic::modeling::fill_bags_from_map(bags, tuple_bags);
+  void confluence_transition(TIME e,
+                             cadmium::dynamic::message_bags bags) override {
+    // Translate from dynamic_message_bag to template dependent input_bags type.
+    input_bags tuple_bags;
+    cadmium::dynamic::modeling::fill_bags_from_map(bags, tuple_bags);
 
-                    // Forwards the translated value to the wrapped model_type class method.
-                    model_type::confluence_transition(e, tuple_bags);
-                }
+    // Forwards the translated value to the wrapped model_type class method.
+    model_type::confluence_transition(e, tuple_bags);
+  }
 
-                cadmium::dynamic::message_bags output() const override {
-                    cadmium::dynamic::message_bags bags;
-                    output_bags tuple_bags = model_type::output();
+  cadmium::dynamic::message_bags output() const override {
+    cadmium::dynamic::message_bags bags;
+    output_bags tuple_bags = model_type::output();
 
-                    // Translate from template dependent output_bags type to dynamic_message_bag.
-                    cadmium::dynamic::modeling::fill_map_from_bags(tuple_bags, bags);
-                    return bags;
-                }
+    // Translate from template dependent output_bags type to
+    // dynamic_message_bag.
+    cadmium::dynamic::modeling::fill_map_from_bags(tuple_bags, bags);
+    return bags;
+  }
 
-                TIME time_advance() const override {
-                    return model_type::time_advance();
-                }
-            };
-        }
-    }
-}
+  TIME time_advance() const override { return model_type::time_advance(); }
+};
+} // namespace modeling
+} // namespace dynamic
+} // namespace cadmium
 
 #endif // CADMIUM_DYNAMIC_ATOMIC_HPP

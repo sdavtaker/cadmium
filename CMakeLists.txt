@@ -50,6 +50,11 @@ if(CADMIUM_BUILD_TESTS)
     find_package(Catch2 CONFIG REQUIRED)
     enable_testing()
 
+    # Batch 0: concept-satisfaction tests (replaces test-compile/ harness)
+    add_executable(pdevs_concepts_test test/pdevs_concepts_test.cpp)
+    target_link_libraries(pdevs_concepts_test PRIVATE cadmium Catch2::Catch2WithMain)
+    add_test(NAME pdevs_concepts_test COMMAND pdevs_concepts_test)
+
     # Batch 1: pdevs static engine (memory-vault-9py)
     foreach(test_name
             pdevs_simulator_test
@@ -86,40 +91,10 @@ if(CADMIUM_BUILD_TESTS)
 endif()
 
 # ----------------------------------------------------------------------------
-# Compile-check tests (memory-vault-y61)
-# compile-fails/ skipped until C++23 concepts land (memory-vault-quk)
+# Compile-check tests — replaced by pdevs_concepts_test (memory-vault-dwr)
+# The test-compile/ directory is kept for historical reference but is no
+# longer wired into the build.
 # ----------------------------------------------------------------------------
-
-option(CADMIUM_BUILD_COMPILE_TESTS "Build compile-check tests" OFF)
-if(CADMIUM_BUILD_COMPILE_TESTS)
-    if(NOT CADMIUM_BUILD_TESTS)
-        enable_testing()
-    endif()
-    foreach(compile_test
-            devs_generator_atomic_check_test
-            devs_passive_atomic_check_test
-            pdevs_coordinator_of_coupled_of_atomics_test
-            pdevs_coordinator_of_coupled_of_mixed_models_test
-            pdevs_coordinator_of_empty_coupled_model_test
-            pdevs_coupled_of_all_atomics_test
-            pdevs_coupled_of_all_coupleds_test
-            pdevs_coupled_of_mixed_models_test
-            pdevs_empty_coupled_model_is_a_valid_model_test
-            pdevs_generator_atomic_check_test
-            pdevs_passive_atomic_check_test
-            pdevs_simulator_provide_types_test
-            pdevs_valid_atomic_check_test
-            pdevs_valid_atomic_with_multiple_ports_check_test)
-        add_executable(${compile_test} EXCLUDE_FROM_ALL
-            test-compile/compiles/${compile_test}.cpp)
-        target_link_libraries(${compile_test} PRIVATE cadmium)
-        add_test(
-            NAME compile_check_${compile_test}
-            COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target ${compile_test})
-        set_tests_properties(compile_check_${compile_test}
-            PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-    endforeach()
-endif()
 
 # ----------------------------------------------------------------------------
 # Install

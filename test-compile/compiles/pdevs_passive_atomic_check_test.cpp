@@ -29,7 +29,7 @@
  * that is not failing compilation on atomic_model_assert.
  */
 
-#include<cadmium/concept/atomic_model_assert.hpp>
+#include<cadmium/concepts/atomic_model_assert.hpp>
 #include<cadmium/basic_model/pdevs/passive.hpp>
 
 //preparing the passive to be used as atomic model

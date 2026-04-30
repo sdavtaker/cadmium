@@ -34,44 +34,41 @@
  *
  * This is not a safe method, its intended as quick workaround for displaying
  * states and messages that are defined as tuple for logging purposes.
- * This is not included by the simulator, needs to be included explicitely by the user
- * The reason is that
+ * This is not included by the simulator, needs to be included explicitely by
+ * the user The reason is that
  */
 
-#include <tuple>
 #include <iostream>
+#include <tuple>
 
 namespace cadmium {
-    template<size_t s, typename... T>
-    struct tuple_printer{
-        static void print(std::ostream& os, const std::tuple<T...>& t){
-            tuple_printer<s-1, T...>::print(os, t);
-            os << ", ";
-            os << std::get<s-1>(t);
-        }
-    };
+template <size_t s, typename... T> struct tuple_printer {
+  static void print(std::ostream &os, const std::tuple<T...> &t) {
+    tuple_printer<s - 1, T...>::print(os, t);
+    os << ", ";
+    os << std::get<s - 1>(t);
+  }
+};
 
-    template<typename... T>
-    struct tuple_printer<0, T...>{
-        static void print(std::ostream& os, const std::tuple<T...>& t){
-            //nothing to do here
-        }
-    };
+template <typename... T> struct tuple_printer<0, T...> {
+  static void print(std::ostream &os, const std::tuple<T...> &t) {
+    // nothing to do here
+  }
+};
 
-    template<typename... T>
-    struct tuple_printer<1, T...>{
-        static void print(std::ostream& os, const std::tuple<T...>& t){
-            //no need for comma separator
-            os << std::get<0>(t);
-        }
-    };
+template <typename... T> struct tuple_printer<1, T...> {
+  static void print(std::ostream &os, const std::tuple<T...> &t) {
+    // no need for comma separator
+    os << std::get<0>(t);
+  }
+};
 
-    template <typename... T>
-    std::ostream& operator<<(std::ostream& os, const std::tuple<T...>& t){
-        os << "[";
-        tuple_printer<sizeof...(T), T...>::print(os, t);
-        return os << "]";
-    }
-
+template <typename... T>
+std::ostream &operator<<(std::ostream &os, const std::tuple<T...> &t) {
+  os << "[";
+  tuple_printer<sizeof...(T), T...>::print(os, t);
+  return os << "]";
 }
+
+} // namespace cadmium
 #endif // TUPLE_TO_OSTREAM_HPP

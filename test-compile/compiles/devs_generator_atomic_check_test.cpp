@@ -29,7 +29,7 @@
  * compilation on devs_atomic_model_assert.
  */
 
-#include<cadmium/concept/atomic_model_assert.hpp>
+#include<cadmium/concepts/atomic_model_assert.hpp>
 #include<cadmium/basic_model/devs/generator.hpp>
 
 //preparing the generator to be used as atomic model

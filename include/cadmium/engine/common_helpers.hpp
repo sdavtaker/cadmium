@@ -27,39 +27,38 @@
 #ifndef CADMIUM_COMMON_HELPERS_HPP
 #define CADMIUM_COMMON_HELPERS_HPP
 
+#include <sstream>
 #include <tuple>
 #include <vector>
-#include <sstream>
 
 namespace cadmium {
-    namespace helper {
+namespace helper {
 
-        //Generic tuple for_each function
-        template<typename TUPLE, typename FUNC>
-        void for_each(TUPLE& ts, FUNC&& f) {
+// Generic tuple for_each function
+template <typename TUPLE, typename FUNC> void for_each(TUPLE &ts, FUNC &&f) {
 
-            auto for_each_fold_expression = [&f](auto &... e)->void { (f(e) , ...); };
-            std::apply(for_each_fold_expression, ts);
-        }
-
-        std::string join(std::vector<std::string> v) {
-            std::ostringstream oss;
-            oss << "{";
-            auto it = v.begin();
-            if (it != v.end()) {
-                oss << *it;
-                ++it;
-            }
-            while (it != v.end()){
-                oss << ", ";
-                oss << *it;
-                ++it;
-            }
-            oss << "}";
-            return oss.str();
-        }
-
-    }
+  auto for_each_fold_expression = [&f](auto &...e) -> void { (f(e), ...); };
+  std::apply(for_each_fold_expression, ts);
 }
 
-#endif //CADMIUM_COMMON_HELPERS_HPP
+std::string join(std::vector<std::string> v) {
+  std::ostringstream oss;
+  oss << "{";
+  auto it = v.begin();
+  if (it != v.end()) {
+    oss << *it;
+    ++it;
+  }
+  while (it != v.end()) {
+    oss << ", ";
+    oss << *it;
+    ++it;
+  }
+  oss << "}";
+  return oss.str();
+}
+
+} // namespace helper
+} // namespace cadmium
+
+#endif // CADMIUM_COMMON_HELPERS_HPP

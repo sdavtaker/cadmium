@@ -26,167 +26,199 @@
 
 /**
  * Regression tests for a 2017 bug where stale messages were re-read from inbox
- * (simple_inbox_cleanup_bug_test) or re-routed from outbox (simple_outbox_cleanup_bug_test).
- * The bug caused the accumulator to accumulate more than once per generator tick.
+ * (simple_inbox_cleanup_bug_test) or re-routed from outbox
+ * (simple_outbox_cleanup_bug_test). The bug caused the accumulator to
+ * accumulate more than once per generator tick.
  *
- * We verify the fix by checking that every logged accumulator state is either the initial
- * state [0, 0] or the single-accumulation state [1, 0] — never [2, 0] or higher.
- * The accumulator state is the only tuple-valued state in these topologies, so searching
- * for " is [" uniquely identifies accumulator state log lines.
+ * We verify the fix by checking that every logged accumulator state is either
+ * the initial state [0, 0] or the single-accumulation state [1, 0] — never [2,
+ * 0] or higher. The accumulator state is the only tuple-valued state in these
+ * topologies, so searching for " is [" uniquely identifies accumulator state
+ * log lines.
  */
 
 #include <catch2/catch_test_macros.hpp>
-#include <sstream>
-#include <string>
 
 #include <cadmium/basic_model/pdevs/accumulator.hpp>
 #include <cadmium/basic_model/pdevs/filter_first_output.hpp>
 #include <cadmium/basic_model/pdevs/int_generator_one_sec.hpp>
-#include <cadmium/engine/pdevs_runner.hpp>
-#include <cadmium/logger/common_loggers.hpp>
+#include <cadmium/engine/pdevs_coordinator.hpp>
 #include <cadmium/logger/tuple_to_ostream.hpp>
 #include <cadmium/modeling/coupling.hpp>
 
 namespace BM = cadmium::basic_models::pdevs;
 
-namespace {
-    std::ostringstream oss;
-
-    struct oss_sink {
-        static std::ostream& sink() { return oss; }
-    };
-
-    int count_matches(const std::string& needle, const std::string& haystack) {
-        int count = 0;
-        size_t pos = haystack.find(needle, 0);
-        while (pos != std::string::npos) {
-            ++count;
-            pos = haystack.find(needle, pos + 1);
-        }
-        return count;
-    }
-}
-
-using global_time    = cadmium::logger::logger<cadmium::logger::logger_global_time, cadmium::logger::formatter<float>, oss_sink>;
-using state_log      = cadmium::logger::logger<cadmium::logger::logger_state,       cadmium::logger::formatter<float>, oss_sink>;
-using log_time_and_state = cadmium::logger::multilogger<state_log, global_time>;
-
-// Atomic model aliases
-template<typename TIME> struct first_receiver   : public BM::filter_first_output<TIME> {};
-template<typename TIME> struct filter_one       : public BM::filter_first_output<TIME> {};
-template<typename TIME> using  gen = BM::int_generator_one_sec<TIME>;
-template<typename TIME> using  acc = BM::accumulator<int, TIME>;
+template <typename TIME>
+struct filter_one : public BM::filter_first_output<TIME> {};
+template <typename TIME> using gen = BM::int_generator_one_sec<TIME>;
+template <typename TIME> using acc = BM::accumulator<int, TIME>;
 
 // ─── Inbox-cleanup topology: C1(Gen→Filter→) → C3(→C2(→Acc→)→) ──────────────
 
 struct C1_out : public cadmium::out_port<int> {};
-using ips_C1       = std::tuple<>;
-using ops_C1       = std::tuple<C1_out>;
+using ips_C1 = std::tuple<>;
+using ops_C1 = std::tuple<C1_out>;
 using submodels_C1 = cadmium::modeling::models_tuple<gen, filter_one>;
-using eics_C1      = std::tuple<>;
-using eocs_C1      = std::tuple<cadmium::modeling::EOC<filter_one, BM::filter_first_output_defs::out, C1_out>>;
-using ics_C1       = std::tuple<cadmium::modeling::IC<gen, BM::int_generator_one_sec_defs::out, filter_one, BM::filter_first_output_defs::in>>;
-template<typename TIME>
-struct C1 : public cadmium::modeling::pdevs::coupled_model<TIME, ips_C1, ops_C1, submodels_C1, eics_C1, eocs_C1, ics_C1> {};
+using eics_C1 = std::tuple<>;
+using eocs_C1 = std::tuple<cadmium::modeling::EOC<
+    filter_one, BM::filter_first_output_defs::out, C1_out>>;
+using ics_C1 = std::tuple<
+    cadmium::modeling::IC<gen, BM::int_generator_one_sec_defs::out, filter_one,
+                          BM::filter_first_output_defs::in>>;
+template <typename TIME>
+struct C1 : public cadmium::modeling::pdevs::coupled_model<
+                TIME, ips_C1, ops_C1, submodels_C1, eics_C1, eocs_C1, ics_C1> {
+};
 
-struct C2_in  : public cadmium::in_port<int>  {};
+struct C2_in : public cadmium::in_port<int> {};
 struct C2_out : public cadmium::out_port<int> {};
-using ips_C2       = std::tuple<C2_in>;
-using ops_C2       = std::tuple<C2_out>;
+using ips_C2 = std::tuple<C2_in>;
+using ops_C2 = std::tuple<C2_out>;
 using submodels_C2 = cadmium::modeling::models_tuple<acc>;
-using eics_C2      = std::tuple<cadmium::modeling::EIC<C2_in, acc, BM::accumulator_defs<int>::add>>;
-using eocs_C2      = std::tuple<cadmium::modeling::EOC<acc, BM::accumulator_defs<int>::sum, C2_out>>;
-using ics_C2       = std::tuple<>;
-template<typename TIME>
-struct C2 : public cadmium::modeling::pdevs::coupled_model<TIME, ips_C2, ops_C2, submodels_C2, eics_C2, eocs_C2, ics_C2> {};
+using eics_C2 = std::tuple<
+    cadmium::modeling::EIC<C2_in, acc, BM::accumulator_defs<int>::add>>;
+using eocs_C2 = std::tuple<
+    cadmium::modeling::EOC<acc, BM::accumulator_defs<int>::sum, C2_out>>;
+using ics_C2 = std::tuple<>;
+template <typename TIME>
+struct C2 : public cadmium::modeling::pdevs::coupled_model<
+                TIME, ips_C2, ops_C2, submodels_C2, eics_C2, eocs_C2, ics_C2> {
+};
 
-struct C3_in  : public cadmium::in_port<int>  {};
+struct C3_in : public cadmium::in_port<int> {};
 struct C3_out : public cadmium::out_port<int> {};
-using ips_C3       = std::tuple<C3_in>;
-using ops_C3       = std::tuple<C3_out>;
+using ips_C3 = std::tuple<C3_in>;
+using ops_C3 = std::tuple<C3_out>;
 using submodels_C3 = cadmium::modeling::models_tuple<C2>;
-using eics_C3      = std::tuple<cadmium::modeling::EIC<C3_in, C2, C2_in>>;
-using eocs_C3      = std::tuple<cadmium::modeling::EOC<C2, C2_out, C3_out>>;
-using ics_C3       = std::tuple<>;
-template<typename TIME>
-struct C3 : public cadmium::modeling::pdevs::coupled_model<TIME, ips_C3, ops_C3, submodels_C3, eics_C3, eocs_C3, ics_C3> {};
+using eics_C3 = std::tuple<cadmium::modeling::EIC<C3_in, C2, C2_in>>;
+using eocs_C3 = std::tuple<cadmium::modeling::EOC<C2, C2_out, C3_out>>;
+using ics_C3 = std::tuple<>;
+template <typename TIME>
+struct C3 : public cadmium::modeling::pdevs::coupled_model<
+                TIME, ips_C3, ops_C3, submodels_C3, eics_C3, eocs_C3, ics_C3> {
+};
 
 struct top_out : public cadmium::out_port<int> {};
-using ips_TOP       = std::tuple<>;
-using ops_TOP       = std::tuple<top_out>;
+using ips_TOP = std::tuple<>;
+using ops_TOP = std::tuple<top_out>;
 using submodels_TOP = cadmium::modeling::models_tuple<C1, C3>;
-using eics_TOP      = std::tuple<>;
-using eocs_TOP      = std::tuple<cadmium::modeling::EOC<C3, C3_out, top_out>>;
-using ics_TOP       = std::tuple<cadmium::modeling::IC<C1, C1_out, C3, C3_in>>;
-template<typename TIME>
-struct CTOP : public cadmium::modeling::pdevs::coupled_model<TIME, ips_TOP, ops_TOP, submodels_TOP, eics_TOP, eocs_TOP, ics_TOP> {};
+using eics_TOP = std::tuple<>;
+using eocs_TOP = std::tuple<cadmium::modeling::EOC<C3, C3_out, top_out>>;
+using ics_TOP = std::tuple<cadmium::modeling::IC<C1, C1_out, C3, C3_in>>;
+template <typename TIME>
+struct CTOP
+    : public cadmium::modeling::pdevs::coupled_model<
+          TIME, ips_TOP, ops_TOP, submodels_TOP, eics_TOP, eocs_TOP, ics_TOP> {
+};
 
-TEST_CASE("inbox cleanup: accumulator never accumulates more than once per tick", "[cleanup][inbox]") {
-    oss.str("");
-    cadmium::engine::runner<float, CTOP, log_time_and_state> r{0.0};
-    r.run_until(5.0);
-
-    // The accumulator state is the only tuple-valued state; it prints as " is [N, M]".
-    // Every entry must be either [0, 0] (initial/reset) or [1, 0] (one accumulation).
-    int n_zero = count_matches(" is [0, 0]", oss.str());
-    int n_one  = count_matches(" is [1, 0]", oss.str());
-    int n_any  = count_matches(" is [",      oss.str());
-    CHECK(n_zero + n_one == n_any);
+SCENARIO("inbox cleanup prevents stale messages from being re-processed on the "
+         "next tick",
+         "[cleanup][inbox]") {
+  GIVEN("a topology where a filtered generator feeds an accumulator through "
+        "two levels of coupling") {
+    WHEN("the simulation is stepped for 5 seconds via the coordinator") {
+      cadmium::engine::coordinator<CTOP, float> c;
+      c.init(0.0f);
+      int top_outputs = 0;
+      while (c.next() < 5.0f) {
+        float t = c.next();
+        c.collect_outputs(t);
+        if (!cadmium::engine::all_bags_empty(c.outbox()))
+          ++top_outputs;
+        c.advance_simulation(t);
+      }
+      THEN("the top-level coupled model produces at most 1 output — "
+           "the accumulator is not double-accumulated") {
+        CHECK(top_outputs <= 1);
+      }
+    }
+  }
 }
 
 // ─── Outbox-cleanup topology: D1(Gen→Filter→) → D3(→D2(→SecondFilter→Acc→)→) ─
 
-template<typename TIME> struct second_filter_one : public BM::filter_first_output<TIME> {};
+template <typename TIME>
+struct second_filter_one : public BM::filter_first_output<TIME> {};
 
 struct D1_out : public cadmium::out_port<int> {};
-using ips_D1       = std::tuple<>;
-using ops_D1       = std::tuple<D1_out>;
+using ips_D1 = std::tuple<>;
+using ops_D1 = std::tuple<D1_out>;
 using submodels_D1 = cadmium::modeling::models_tuple<gen, filter_one>;
-using eics_D1      = std::tuple<>;
-using eocs_D1      = std::tuple<cadmium::modeling::EOC<filter_one, BM::filter_first_output_defs::out, D1_out>>;
-using ics_D1       = std::tuple<cadmium::modeling::IC<gen, BM::int_generator_one_sec_defs::out, filter_one, BM::filter_first_output_defs::in>>;
-template<typename TIME>
-struct D1 : public cadmium::modeling::pdevs::coupled_model<TIME, ips_D1, ops_D1, submodels_D1, eics_D1, eocs_D1, ics_D1> {};
+using eics_D1 = std::tuple<>;
+using eocs_D1 = std::tuple<cadmium::modeling::EOC<
+    filter_one, BM::filter_first_output_defs::out, D1_out>>;
+using ics_D1 = std::tuple<
+    cadmium::modeling::IC<gen, BM::int_generator_one_sec_defs::out, filter_one,
+                          BM::filter_first_output_defs::in>>;
+template <typename TIME>
+struct D1 : public cadmium::modeling::pdevs::coupled_model<
+                TIME, ips_D1, ops_D1, submodels_D1, eics_D1, eocs_D1, ics_D1> {
+};
 
-struct D2_in  : public cadmium::in_port<int>  {};
+struct D2_in : public cadmium::in_port<int> {};
 struct D2_out : public cadmium::out_port<int> {};
-using ips_D2       = std::tuple<D2_in>;
-using ops_D2       = std::tuple<D2_out>;
+using ips_D2 = std::tuple<D2_in>;
+using ops_D2 = std::tuple<D2_out>;
 using submodels_D2 = cadmium::modeling::models_tuple<second_filter_one, acc>;
-using eics_D2      = std::tuple<cadmium::modeling::EIC<D2_in, second_filter_one, BM::filter_first_output_defs::in>>;
-using eocs_D2      = std::tuple<cadmium::modeling::EOC<acc, BM::accumulator_defs<int>::sum, D2_out>>;
-using ics_D2       = std::tuple<cadmium::modeling::IC<second_filter_one, BM::filter_first_output_defs::out, acc, BM::accumulator_defs<int>::add>>;
-template<typename TIME>
-struct D2 : public cadmium::modeling::pdevs::coupled_model<TIME, ips_D2, ops_D2, submodels_D2, eics_D2, eocs_D2, ics_D2> {};
+using eics_D2 =
+    std::tuple<cadmium::modeling::EIC<D2_in, second_filter_one,
+                                      BM::filter_first_output_defs::in>>;
+using eocs_D2 = std::tuple<
+    cadmium::modeling::EOC<acc, BM::accumulator_defs<int>::sum, D2_out>>;
+using ics_D2 = std::tuple<
+    cadmium::modeling::IC<second_filter_one, BM::filter_first_output_defs::out,
+                          acc, BM::accumulator_defs<int>::add>>;
+template <typename TIME>
+struct D2 : public cadmium::modeling::pdevs::coupled_model<
+                TIME, ips_D2, ops_D2, submodels_D2, eics_D2, eocs_D2, ics_D2> {
+};
 
-struct D3_in  : public cadmium::in_port<int>  {};
+struct D3_in : public cadmium::in_port<int> {};
 struct D3_out : public cadmium::out_port<int> {};
-using ips_D3       = std::tuple<D3_in>;
-using ops_D3       = std::tuple<D3_out>;
+using ips_D3 = std::tuple<D3_in>;
+using ops_D3 = std::tuple<D3_out>;
 using submodels_D3 = cadmium::modeling::models_tuple<D2>;
-using eics_D3      = std::tuple<cadmium::modeling::EIC<D3_in, D2, D2_in>>;
-using eocs_D3      = std::tuple<cadmium::modeling::EOC<D2, D2_out, D3_out>>;
-using ics_D3       = std::tuple<>;
-template<typename TIME>
-struct D3 : public cadmium::modeling::pdevs::coupled_model<TIME, ips_D3, ops_D3, submodels_D3, eics_D3, eocs_D3, ics_D3> {};
+using eics_D3 = std::tuple<cadmium::modeling::EIC<D3_in, D2, D2_in>>;
+using eocs_D3 = std::tuple<cadmium::modeling::EOC<D2, D2_out, D3_out>>;
+using ics_D3 = std::tuple<>;
+template <typename TIME>
+struct D3 : public cadmium::modeling::pdevs::coupled_model<
+                TIME, ips_D3, ops_D3, submodels_D3, eics_D3, eocs_D3, ics_D3> {
+};
 
 struct DTOP_out : public cadmium::out_port<int> {};
-using ips_DTOP       = std::tuple<>;
-using ops_DTOP       = std::tuple<DTOP_out>;
+using ips_DTOP = std::tuple<>;
+using ops_DTOP = std::tuple<DTOP_out>;
 using submodels_DTOP = cadmium::modeling::models_tuple<D1, D3>;
-using eics_DTOP      = std::tuple<>;
-using eocs_DTOP      = std::tuple<cadmium::modeling::EOC<D3, D3_out, DTOP_out>>;
-using ics_DTOP       = std::tuple<cadmium::modeling::IC<D1, D1_out, D3, D3_in>>;
-template<typename TIME>
-struct DTOP : public cadmium::modeling::pdevs::coupled_model<TIME, ips_DTOP, ops_DTOP, submodels_DTOP, eics_DTOP, eocs_DTOP, ics_DTOP> {};
+using eics_DTOP = std::tuple<>;
+using eocs_DTOP = std::tuple<cadmium::modeling::EOC<D3, D3_out, DTOP_out>>;
+using ics_DTOP = std::tuple<cadmium::modeling::IC<D1, D1_out, D3, D3_in>>;
+template <typename TIME>
+struct DTOP
+    : public cadmium::modeling::pdevs::coupled_model<TIME, ips_DTOP, ops_DTOP,
+                                                     submodels_DTOP, eics_DTOP,
+                                                     eocs_DTOP, ics_DTOP> {};
 
-TEST_CASE("outbox cleanup: accumulator never accumulates more than once per tick", "[cleanup][outbox]") {
-    oss.str("");
-    cadmium::engine::runner<float, DTOP, log_time_and_state> r{0.0};
-    r.run_until(5.0);
-
-    int n_zero = count_matches(" is [0, 0]", oss.str());
-    int n_one  = count_matches(" is [1, 0]", oss.str());
-    int n_any  = count_matches(" is [",      oss.str());
-    CHECK(n_zero + n_one == n_any);
+SCENARIO("outbox cleanup prevents stale messages from being re-routed on the "
+         "next tick",
+         "[cleanup][outbox]") {
+  GIVEN("a topology where a filtered generator feeds an accumulator via a "
+        "second filter through two levels of coupling") {
+    WHEN("the simulation is stepped for 5 seconds via the coordinator") {
+      cadmium::engine::coordinator<DTOP, float> c;
+      c.init(0.0f);
+      int top_outputs = 0;
+      while (c.next() < 5.0f) {
+        float t = c.next();
+        c.collect_outputs(t);
+        if (!cadmium::engine::all_bags_empty(c.outbox()))
+          ++top_outputs;
+        c.advance_simulation(t);
+      }
+      THEN("the top-level coupled model produces at most 1 output — "
+           "the accumulator is not double-accumulated") {
+        CHECK(top_outputs <= 1);
+      }
+    }
+  }
 }

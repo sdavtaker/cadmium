@@ -29,7 +29,7 @@
  * compilation on pdevs_atomic_model_assert.
  */
 
-#include<cadmium/concept/atomic_model_assert.hpp>
+#include<cadmium/concepts/atomic_model_assert.hpp>
 #include<cadmium/basic_model/pdevs/generator.hpp>
 
 

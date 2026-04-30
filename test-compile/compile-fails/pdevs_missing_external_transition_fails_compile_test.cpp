@@ -29,7 +29,7 @@
  */
 
 #include<cadmium/modeling/ports.hpp>
-#include<cadmium/concept/atomic_model_assert.hpp>
+#include<cadmium/concepts/atomic_model_assert.hpp>
 #include<tuple>
 #include<cadmium/modeling/message_bag.hpp>
 

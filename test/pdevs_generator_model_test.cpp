@@ -28,53 +28,101 @@
 #include <stdexcept>
 
 #include <cadmium/basic_model/pdevs/generator.hpp>
-#include <cadmium/concept/concept_helpers.hpp>
+#include <cadmium/concepts/pdevs_concepts.hpp>
 #include <cadmium/modeling/message_bag.hpp>
 
 const float init_period = 0.1f;
 const float init_output_message = 1.0f;
 
-template<typename TIME>
-using floating_generator_base = cadmium::basic_models::pdevs::generator<float, TIME>;
-using floating_generator_defs = cadmium::basic_models::pdevs::generator_defs<float>;
+template <typename TIME>
+using floating_generator_base =
+    cadmium::basic_models::pdevs::generator<float, TIME>;
+using floating_generator_defs =
+    cadmium::basic_models::pdevs::generator_defs<float>;
 
-template<typename TIME>
+template <typename TIME>
 struct floating_generator : public floating_generator_base<TIME> {
-    float period() const override { return init_period; }
-    float output_message() const override { return init_output_message; }
+  float period() const override { return init_period; }
+  float output_message() const override { return init_output_message; }
 };
 
-TEST_CASE("pdevs generator is atomic", "[pdevs][generator]") {
-    CHECK(cadmium::model_checks::is_atomic<floating_generator>::value());
+SCENARIO("pdevs generator model satisfies the atomic model concept",
+         "[pdevs][generator]") {
+  GIVEN("the floating_generator model type") {
+    WHEN("the atomic concept check is evaluated") {
+      THEN("it passes") {
+        CHECK(cadmium::concepts::pdevs::AtomicModel<floating_generator<float>,
+                                                    float>);
+      }
+    }
+  }
 }
 
-TEST_CASE("pdevs generator is constructable", "[pdevs][generator]") {
-    CHECK_NOTHROW(floating_generator<float>{});
+SCENARIO("pdevs generator model can be default-constructed",
+         "[pdevs][generator]") {
+  GIVEN("no preconditions") {
+    WHEN("a floating_generator is default-constructed") {
+      THEN("no exception is thrown") {
+        CHECK_NOTHROW(floating_generator<float>{});
+      }
+    }
+  }
 }
 
-TEST_CASE("pdevs generator time advance is constant across internal transitions", "[pdevs][generator]") {
+SCENARIO(
+    "pdevs generator model time advance is stable under internal transitions",
+    "[pdevs][generator]") {
+  GIVEN("a freshly constructed generator") {
     auto g = floating_generator<float>();
-    CHECK(g.time_advance() == init_period);
-    g.internal_transition();
-    CHECK(g.time_advance() == init_period);
+    WHEN("time_advance is checked before and after an internal transition") {
+      THEN("it equals the configured period both times") {
+        CHECK(g.time_advance() == init_period);
+        g.internal_transition();
+        CHECK(g.time_advance() == init_period);
+      }
+    }
+  }
 }
 
-TEST_CASE("pdevs generator throws on confluence transition", "[pdevs][generator]") {
+SCENARIO("pdevs generator model rejects a confluence transition",
+         "[pdevs][generator]") {
+  GIVEN("a freshly constructed generator") {
     auto g = floating_generator<float>();
-    typename cadmium::make_message_bags<floating_generator<float>::input_ports>::type bags;
-    CHECK_THROWS_AS(g.confluence_transition(5.0, bags), std::logic_error);
+    WHEN("confluence_transition is called") {
+      typename cadmium::make_message_bags<
+          floating_generator<float>::input_ports>::type bags;
+      THEN("a logic_error is thrown") {
+        CHECK_THROWS_AS(g.confluence_transition(5.0, bags), std::logic_error);
+      }
+    }
+  }
 }
 
-TEST_CASE("pdevs generator throws on external transition", "[pdevs][generator]") {
+SCENARIO("pdevs generator model rejects external transitions",
+         "[pdevs][generator]") {
+  GIVEN("a freshly constructed generator") {
     auto g = floating_generator<float>();
-    typename cadmium::make_message_bags<floating_generator<float>::input_ports>::type bags;
-    CHECK_THROWS_AS(g.external_transition(5.0, bags), std::logic_error);
+    WHEN("external_transition is called") {
+      typename cadmium::make_message_bags<
+          floating_generator<float>::input_ports>::type bags;
+      THEN("a logic_error is thrown") {
+        CHECK_THROWS_AS(g.external_transition(5.0, bags), std::logic_error);
+      }
+    }
+  }
 }
 
-TEST_CASE("pdevs generator output returns configured message", "[pdevs][generator]") {
+SCENARIO("pdevs generator model output produces the configured message",
+         "[pdevs][generator]") {
+  GIVEN("a freshly constructed generator") {
     auto g = floating_generator<float>();
-    auto o = g.output();
-    auto o_m = cadmium::get_messages<floating_generator_defs::out>(o);
-    REQUIRE(o_m.size() == 1);
-    CHECK(o_m.at(0) == init_output_message);
+    WHEN("output is called") {
+      auto o = g.output();
+      auto o_m = cadmium::get_messages<floating_generator_defs::out>(o);
+      THEN("the output bag contains exactly the configured message") {
+        REQUIRE(o_m.size() == 1);
+        CHECK(o_m.at(0) == init_output_message);
+      }
+    }
+  }
 }

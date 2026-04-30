@@ -30,24 +30,42 @@
 #include <cadmium/modeling/dynamic_atomic.hpp>
 #include <cadmium/modeling/dynamic_model_translator.hpp>
 
-template<typename TIME>
+template <typename TIME>
 using int_accumulator = cadmium::basic_models::pdevs::accumulator<int, TIME>;
 
-template<typename TIME>
-struct test_custom_accumulator : public cadmium::basic_models::pdevs::accumulator<int, TIME> {
-    test_custom_accumulator() = default;
-    explicit test_custom_accumulator(int) {}
+template <typename TIME>
+struct test_custom_accumulator
+    : public cadmium::basic_models::pdevs::accumulator<int, TIME> {
+  test_custom_accumulator() = default;
+  explicit test_custom_accumulator(int) {}
 };
 
-TEST_CASE("dynamic atomic wraps model with matching state type", "[dynamic][atomic]") {
+SCENARIO("dynamic atomic wrapper preserves the model state type",
+         "[dynamic][atomic]") {
+  GIVEN("a raw int_accumulator and a dynamic atomic wrapping the same model "
+        "type") {
     int_accumulator<float> model;
     cadmium::dynamic::modeling::atomic<int_accumulator, float> wrapped_model;
-    static_assert(std::is_same<decltype(model.state), decltype(wrapped_model.state)>::value);
-    CHECK(model.state == wrapped_model.state);
+    static_assert(std::is_same<decltype(model.state),
+                               decltype(wrapped_model.state)>::value);
+    WHEN("their initial states are compared") {
+      THEN("the states are equal") {
+        CHECK(model.state == wrapped_model.state);
+      }
+    }
+  }
 }
 
-TEST_CASE("dynamic atomic can be created with custom id and constructor arguments", "[dynamic][atomic]") {
-    CHECK_NOTHROW(
-        cadmium::dynamic::translate::make_dynamic_atomic_model<test_custom_accumulator, float, int>(
-            "id_test", 2));
+SCENARIO("dynamic atomic can be constructed with a custom id and constructor "
+         "arguments",
+         "[dynamic][atomic]") {
+  GIVEN("a model type whose constructor takes an int") {
+    WHEN("make_dynamic_atomic_model is called with a custom id and an int "
+         "argument") {
+      THEN("no exception is thrown") {
+        CHECK_NOTHROW(cadmium::dynamic::translate::make_dynamic_atomic_model<
+                      test_custom_accumulator, float, int>("id_test", 2));
+      }
+    }
+  }
 }

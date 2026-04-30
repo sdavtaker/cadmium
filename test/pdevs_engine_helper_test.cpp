@@ -32,48 +32,80 @@
 #include <cadmium/engine/pdevs_engine_helpers.hpp>
 #include <cadmium/engine/pdevs_simulator.hpp>
 
-template<typename TIME>
-using floating_accumulator = cadmium::basic_models::pdevs::accumulator<float, TIME>;
+template <typename TIME>
+using floating_accumulator =
+    cadmium::basic_models::pdevs::accumulator<float, TIME>;
 
 using simulator_of_floating_accumulator =
-    cadmium::engine::simulator<floating_accumulator, float, cadmium::logger::not_logger>;
+    cadmium::engine::simulator<floating_accumulator, float>;
 using tuple_sim_accum = std::tuple<simulator_of_floating_accumulator>;
 
-TEST_CASE("get_engine_by_model retrieves single element from tuple", "[pdevs][engine_helpers]") {
+SCENARIO(
+    "get_engine_by_model retrieves the single engine from a one-element tuple",
+    "[pdevs][engine_helpers]") {
+  GIVEN("a tuple containing one accumulator simulator") {
     tuple_sim_accum st;
-    CHECK_NOTHROW(cadmium::engine::get_engine_by_model<floating_accumulator<float>, tuple_sim_accum>(st));
+    WHEN("get_engine_by_model is called for the accumulator type") {
+      THEN("no exception is thrown") {
+        CHECK_NOTHROW(
+            cadmium::engine::get_engine_by_model<floating_accumulator<float>,
+                                                 tuple_sim_accum>(st));
+      }
+    }
+  }
 }
 
 const float gen_period = 0.1f;
 const float gen_output = 1.0f;
 
-template<typename TIME>
-using floating_generator_base = cadmium::basic_models::pdevs::generator<float, TIME>;
+template <typename TIME>
+using floating_generator_base =
+    cadmium::basic_models::pdevs::generator<float, TIME>;
 
-template<typename TIME>
+template <typename TIME>
 struct floating_generator_a : public floating_generator_base<TIME> {
-    float period() const override { return gen_period; }
-    float output_message() const override { return gen_output; }
+  float period() const override { return gen_period; }
+  float output_message() const override { return gen_output; }
 };
 
-template<typename TIME>
+template <typename TIME>
 struct floating_generator_b : public floating_generator_base<TIME> {
-    float period() const override { return gen_period; }
-    float output_message() const override { return gen_output; }
+  float period() const override { return gen_period; }
+  float output_message() const override { return gen_output; }
 };
 
-using simulator_of_gen_a = cadmium::engine::simulator<floating_generator_a, float, cadmium::logger::not_logger>;
-using simulator_of_gen_b = cadmium::engine::simulator<floating_generator_b, float, cadmium::logger::not_logger>;
+using simulator_of_gen_a =
+    cadmium::engine::simulator<floating_generator_a, float>;
+using simulator_of_gen_b =
+    cadmium::engine::simulator<floating_generator_b, float>;
 using tuple_sim_gens = std::tuple<simulator_of_gen_a, simulator_of_gen_b>;
 
-TEST_CASE("get_engine_by_model retrieves first of two elements", "[pdevs][engine_helpers]") {
+SCENARIO(
+    "get_engine_by_model retrieves the first engine from a two-element tuple",
+    "[pdevs][engine_helpers]") {
+  GIVEN("a tuple containing two generator simulators") {
     tuple_sim_gens st;
-    CHECK_NOTHROW(
-        cadmium::engine::get_engine_by_model<floating_generator_a<float>, tuple_sim_gens>(st));
+    WHEN("get_engine_by_model is called for the first generator type") {
+      THEN("no exception is thrown") {
+        CHECK_NOTHROW(
+            cadmium::engine::get_engine_by_model<floating_generator_a<float>,
+                                                 tuple_sim_gens>(st));
+      }
+    }
+  }
 }
 
-TEST_CASE("get_engine_by_model retrieves second of two elements", "[pdevs][engine_helpers]") {
+SCENARIO(
+    "get_engine_by_model retrieves the second engine from a two-element tuple",
+    "[pdevs][engine_helpers]") {
+  GIVEN("a tuple containing two generator simulators") {
     tuple_sim_gens st;
-    CHECK_NOTHROW(
-        cadmium::engine::get_engine_by_model<floating_generator_b<float>, tuple_sim_gens>(st));
+    WHEN("get_engine_by_model is called for the second generator type") {
+      THEN("no exception is thrown") {
+        CHECK_NOTHROW(
+            cadmium::engine::get_engine_by_model<floating_generator_b<float>,
+                                                 tuple_sim_gens>(st));
+      }
+    }
+  }
 }

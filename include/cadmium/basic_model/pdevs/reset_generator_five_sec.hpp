@@ -24,99 +24,103 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #ifndef CADMIUM_PDEVS_GENERATOR_FIVE_HPP
 #define CADMIUM_PDEVS_GENERATOR_FIVE_HPP
 
-#include<cadmium/modeling/ports.hpp>
-#include<cadmium/modeling/message_bag.hpp>
-#include<cadmium/basic_model/pdevs/accumulator.hpp>
+#include <cadmium/basic_model/pdevs/accumulator.hpp>
+#include <cadmium/modeling/message_bag.hpp>
+#include <cadmium/modeling/ports.hpp>
 
-#include<limits>
-#include<stdexcept>
-
+#include <limits>
+#include <stdexcept>
 
 namespace cadmium::basic_models::pdevs {
-    template<typename TIME>
-    using test_accumulator=cadmium::basic_models::pdevs::accumulator<int, TIME>;
-    using test_accumulator_defs=cadmium::basic_models::pdevs::accumulator_defs<int>;
-    using reset_tick=cadmium::basic_models::pdevs::accumulator_defs<int>::reset_tick;
+template <typename TIME>
+using test_accumulator = cadmium::basic_models::pdevs::accumulator<int, TIME>;
+using test_accumulator_defs =
+    cadmium::basic_models::pdevs::accumulator_defs<int>;
+using reset_tick =
+    cadmium::basic_models::pdevs::accumulator_defs<int>::reset_tick;
 
-    /**
-     * @brief Generator PDEVS Model
-     *
-     * Generator of resets every 5 sec PDEVS Model:
-     * - X = {}
-     * - Y = {1}
-     * - S = {passive, active} x Multiples(1)
-     * - internal(phase, t) = ("active", 5)
-     * - external = {}
-     * - out ("active", t) = reset
-     * - advance(phase, t) = 5 - t
-     */
+/**
+ * @brief Generator PDEVS Model
+ *
+ * Generator of resets every 5 sec PDEVS Model:
+ * - X = {}
+ * - Y = {1}
+ * - S = {passive, active} x Multiples(1)
+ * - internal(phase, t) = ("active", 5)
+ * - external = {}
+ * - out ("active", t) = reset
+ * - advance(phase, t) = 5 - t
+ */
 
-    //definitions used for defining the accumulator that need to be accessed by externals resources before instantiate the models
-    //This includes Ports referenced by couplings, and
+// definitions used for defining the accumulator that need to be accessed by
+// externals resources before instantiate the models This includes Ports
+// referenced by couplings, and
 
-    struct reset_generator_five_sec_defs {
-        //custom ports
-        struct out : public out_port<reset_tick> {
-        };
-    };
+struct reset_generator_five_sec_defs {
+  // custom ports
+  struct out : public out_port<reset_tick> {};
+};
 
+template <typename TIME> // VALUE is the type of Y
+class reset_generator_five_sec {
+  using defs = reset_generator_five_sec_defs; // putting definitions in context
+public:
+  // these functions need to be overriden to define the generator behavior
+  TIME period() const { // time between consecutive messages
+    return 5.0;
+  }
 
-    template<typename TIME> //VALUE is the type of Y
-    class reset_generator_five_sec {
-        using defs=reset_generator_five_sec_defs;// putting definitions in context
-    public:
-        //these functions need to be overriden to define the generator behavior
-        TIME period() const { // time between consecutive messages
-            return 5.0;
-        }
+  reset_tick output_message() const { // message to be output
+    return reset_tick{};
+  }
 
-        reset_tick output_message() const {// message to be output
-            return reset_tick{};
-        }
+  // required definitions start here
+  // default constructor
+  constexpr reset_generator_five_sec() noexcept {}
 
-        // required definitions start here
-        // default constructor
-        constexpr reset_generator_five_sec() noexcept {}
+  // state definition
+  using state_type = int;
+  state_type state = 0;
 
-        // state definition
-        using state_type=int;
-        state_type state = 0;
+  // ports definition
+  using input_ports = std::tuple<>;
+  using output_ports = std::tuple<typename defs::out>;
 
-        // ports definition
-        using input_ports=std::tuple<>;
-        using output_ports=std::tuple<typename defs::out>;
+  // internal transition
+  void internal_transition() {}
 
-        // internal transition
-        void internal_transition() {}
+  // external transition
+  void external_transition(TIME e,
+                           typename make_message_bags<input_ports>::type mbs) {
+    throw std::logic_error(
+        "External transition called in a model with no input ports");
+  }
 
-        // external transition
-        void external_transition(TIME e, typename make_message_bags<input_ports>::type mbs) {
-            throw std::logic_error("External transition called in a model with no input ports");
-        }
+  // confluence transition
+  void
+  confluence_transition(TIME e,
+                        typename make_message_bags<input_ports>::type mbs) {
+    throw std::logic_error(
+        "Confluence transition called in a model with no input ports");
+  }
 
-        // confluence transition
-        void confluence_transition(TIME e, typename make_message_bags<input_ports>::type mbs) {
-            throw std::logic_error("Confluence transition called in a model with no input ports");
-        }
+  // output function
+  typename make_message_bags<output_ports>::type output() const {
+    typename make_message_bags<output_ports>::type bags;
+    cadmium::get_messages<typename defs::out>(bags).push_back(output_message());
+    return bags;
+  }
 
-        // output function
-        typename make_message_bags<output_ports>::type output() const {
-            typename make_message_bags<output_ports>::type bags;
-            cadmium::get_messages<typename defs::out>(bags).push_back(output_message());
-            return bags;
-        }
+  // time_advance function
+  TIME time_advance() const {
+    // we assume default constructor of TIME is 0 and infinity is defined in
+    // numeric_limits
+    return period();
+  }
+};
+} // namespace cadmium::basic_models::pdevs
 
-        // time_advance function
-        TIME time_advance() const {
-            //we assume default constructor of TIME is 0 and infinity is defined in numeric_limits
-            return period();
-        }
-    };
-}
-
-#endif //CADMIUM_PDEVS_GENERATOR_FIVE_HPP
-
+#endif // CADMIUM_PDEVS_GENERATOR_FIVE_HPP

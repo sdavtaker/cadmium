@@ -32,16 +32,25 @@
 
 using namespace cadmium;
 
-TEST_CASE("empty tuple streams as []", "[tuple_to_ostream]") {
-    std::ostringstream oss;
+SCENARIO("an empty tuple is streamed to an ostream", "[tuple_to_ostream]") {
+  GIVEN("an empty tuple") {
     std::tuple<> empty;
-    oss << empty;
-    CHECK(oss.str() == "[]");
+    WHEN("it is streamed to an ostringstream") {
+      std::ostringstream oss;
+      oss << empty;
+      THEN("the output is []") { CHECK(oss.str() == "[]"); }
+    }
+  }
 }
 
-TEST_CASE("single-element int tuple streams as [N]", "[tuple_to_ostream]") {
-    std::ostringstream oss;
+SCENARIO("a single-element tuple is streamed to an ostream",
+         "[tuple_to_ostream]") {
+  GIVEN("a tuple containing the integer 1") {
     auto one_int = std::make_tuple(1);
-    oss << one_int;
-    CHECK(oss.str() == "[1]");
+    WHEN("it is streamed to an ostringstream") {
+      std::ostringstream oss;
+      oss << one_int;
+      THEN("the output is [1]") { CHECK(oss.str() == "[1]"); }
+    }
+  }
 }

@@ -29,7 +29,7 @@
  */
 
 #include "pdevs_coupled_of_atomic_models.hpp"
-#include <cadmium/concept/coupled_model_assert.hpp>
+#include <cadmium/concepts/coupled_model_assert.hpp>
 
 int main(){
     cadmium::model_checks::pdevs::coupled_model_assert<coupled_of_atomics>();

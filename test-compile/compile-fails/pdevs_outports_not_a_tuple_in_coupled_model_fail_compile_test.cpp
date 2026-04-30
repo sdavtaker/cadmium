@@ -27,7 +27,7 @@
 #include <tuple>
 #include <vector>
 #include <cadmium/modeling/coupling.hpp>
-#include <cadmium/concept/coupled_model_assert.hpp>
+#include <cadmium/concepts/coupled_model_assert.hpp>
 
 /**
  * Test that when output ports of a coupled model are not defined as a tuple, coupling fails compilation

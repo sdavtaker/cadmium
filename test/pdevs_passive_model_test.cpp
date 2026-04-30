@@ -29,43 +29,86 @@
 #include <stdexcept>
 
 #include <cadmium/basic_model/pdevs/passive.hpp>
-#include <cadmium/concept/concept_helpers.hpp>
+#include <cadmium/concepts/pdevs_concepts.hpp>
 #include <cadmium/modeling/message_bag.hpp>
 
-template<typename TIME>
+template <typename TIME>
 using floating_passive = cadmium::basic_models::pdevs::passive<float, TIME>;
 using floating_passive_defs = cadmium::basic_models::pdevs::passive_defs<float>;
 
-TEST_CASE("pdevs passive is atomic", "[pdevs][passive]") {
-    CHECK(cadmium::model_checks::is_atomic<floating_passive>::value());
+SCENARIO("pdevs passive model satisfies the atomic model concept",
+         "[pdevs][passive]") {
+  GIVEN("the floating_passive model type") {
+    WHEN("the atomic concept check is evaluated") {
+      THEN("it passes") {
+        CHECK(cadmium::concepts::pdevs::AtomicModel<floating_passive<float>,
+                                                    float>);
+      }
+    }
+  }
 }
 
-TEST_CASE("pdevs passive is constructable", "[pdevs][passive]") {
-    CHECK_NOTHROW(floating_passive<float>{});
+SCENARIO("pdevs passive model can be default-constructed", "[pdevs][passive]") {
+  GIVEN("no preconditions") {
+    WHEN("a floating_passive is default-constructed") {
+      THEN("no exception is thrown") {
+        CHECK_NOTHROW(floating_passive<float>{});
+      }
+    }
+  }
 }
 
-TEST_CASE("pdevs passive throws on internal transition", "[pdevs][passive]") {
+SCENARIO("pdevs passive model rejects an internal transition",
+         "[pdevs][passive]") {
+  GIVEN("a default-constructed passive model") {
     auto p = floating_passive<float>();
-    CHECK_THROWS_AS(p.internal_transition(), std::logic_error);
+    WHEN("internal_transition is called") {
+      THEN("a logic_error is thrown") {
+        CHECK_THROWS_AS(p.internal_transition(), std::logic_error);
+      }
+    }
+  }
 }
 
-TEST_CASE("pdevs passive throws on confluence transition", "[pdevs][passive]") {
+SCENARIO("pdevs passive model rejects a confluence transition",
+         "[pdevs][passive]") {
+  GIVEN("a default-constructed passive model") {
     auto p = floating_passive<float>();
-    typename cadmium::make_message_bags<floating_passive<float>::input_ports>::type bags;
-    cadmium::get_messages<floating_passive_defs::in>(bags).push_back(1);
-    CHECK_THROWS_AS(p.confluence_transition(5.0, bags), std::logic_error);
+    WHEN("confluence_transition is called with a message") {
+      typename cadmium::make_message_bags<
+          floating_passive<float>::input_ports>::type bags;
+      cadmium::get_messages<floating_passive_defs::in>(bags).push_back(1);
+      THEN("a logic_error is thrown") {
+        CHECK_THROWS_AS(p.confluence_transition(5.0, bags), std::logic_error);
+      }
+    }
+  }
 }
 
-TEST_CASE("pdevs passive throws on output", "[pdevs][passive]") {
+SCENARIO("pdevs passive model rejects an output call", "[pdevs][passive]") {
+  GIVEN("a default-constructed passive model") {
     auto p = floating_passive<float>();
-    CHECK_THROWS_AS(p.output(), std::logic_error);
+    WHEN("output is called") {
+      THEN("a logic_error is thrown") {
+        CHECK_THROWS_AS(p.output(), std::logic_error);
+      }
+    }
+  }
 }
 
-TEST_CASE("pdevs passive external transition preserves infinite time advance", "[pdevs][passive]") {
+SCENARIO("pdevs passive model accepts external input and remains passive",
+         "[pdevs][passive]") {
+  GIVEN("a passive model with infinite time advance") {
     auto p = floating_passive<float>();
     REQUIRE(std::isinf(p.time_advance()));
-    typename cadmium::make_message_bags<floating_passive<float>::input_ports>::type bags;
-    cadmium::get_messages<floating_passive_defs::in>(bags).push_back(1);
-    CHECK_NOTHROW(p.external_transition(5.0, bags));
-    CHECK(std::isinf(p.time_advance()));
+    WHEN("an external transition is applied with a message on the input port") {
+      typename cadmium::make_message_bags<
+          floating_passive<float>::input_ports>::type bags;
+      cadmium::get_messages<floating_passive_defs::in>(bags).push_back(1);
+      THEN("no exception is thrown and time advance remains infinite") {
+        CHECK_NOTHROW(p.external_transition(5.0, bags));
+        CHECK(std::isinf(p.time_advance()));
+      }
+    }
+  }
 }

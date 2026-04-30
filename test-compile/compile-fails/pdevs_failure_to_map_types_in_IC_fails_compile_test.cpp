@@ -31,7 +31,7 @@
 #include<cadmium/basic_model/pdevs/generator.hpp>
 #include<cadmium/basic_model/pdevs/passive.hpp>
 #include<cadmium/modeling/coupling.hpp>
-#include<cadmium/concept/coupled_model_assert.hpp>
+#include<cadmium/concepts/coupled_model_assert.hpp>
 
 // a generator using floating point messages
 const float init_period = 0.1f;

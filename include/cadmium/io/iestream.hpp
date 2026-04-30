@@ -27,15 +27,14 @@
 #ifndef CADMIUM_IESTREAM_HPP
 #define CADMIUM_IESTREAM_HPP
 
-#include <cadmium/modeling/ports.hpp>
 #include <cadmium/modeling/message_bag.hpp>
+#include <cadmium/modeling/ports.hpp>
 
-#include<limits>
-#include<stdexcept>
-#include <stddef.h>
-#include <string>
 #include <fstream>
-
+#include <limits>
+#include <stddef.h>
+#include <stdexcept>
+#include <string>
 
 using namespace std;
 
@@ -47,14 +46,14 @@ using namespace cadmium;
  * iestream PDEVS Model plays a history of events received by an input stream.
  * The list of events allows to be used as a connector to external tools.
  * The input format is "time output and a custom parser can be defined."
- * Data type MSG must have the operator >> in order to work. Data type TIME must also have the operator >> in order to work.
- * Each line must be an MSG. Therefore the operator >> cannot read inputs that are specified in multiple lines
+ * Data type MSG must have the operator >> in order to work. Data type TIME must
+ * also have the operator >> in order to work. Each line must be an MSG.
+ * Therefore the operator >> cannot read inputs that are specified in multiple
+ * lines
  *
-*/
+ */
 
-
-template<class TIME, class INPUT>
-class Parser {
+template <class TIME, class INPUT> class Parser {
 private:
   std::ifstream file;
 
@@ -63,146 +62,150 @@ public:
 
   Parser() {}
 
-  Parser(const char* file_path) {
-    this->open_file(file_path);
-  }
-  
-  void open_file(const char* file_path) {
-    file.open(file_path);
-  }
+  Parser(const char *file_path) { this->open_file(file_path); }
 
-  std::pair<TIME,INPUT> next_timed_input() {
+  void open_file(const char *file_path) { file.open(file_path); }
+
+  std::pair<TIME, INPUT> next_timed_input() {
     INPUT result;
     TIME next_time;
-    if (file.eof()) throw std::exception();
+    if (file.eof())
+      throw std::exception();
     file >> next_time;
     file >> result;
-    return std::make_pair(next_time,result);
+    return std::make_pair(next_time, result);
   }
-
 };
 
-template<typename MSG>
-struct iestream_input_defs{
-    //custom ports
-    struct out : public out_port<MSG> {
-    };
+template <typename MSG> struct iestream_input_defs {
+  // custom ports
+  struct out : public out_port<MSG> {};
 };
 
-template<typename MSG, typename TIME, typename PORT_TYPE>
+template <typename MSG, typename TIME, typename PORT_TYPE>
 class iestream_input {
-    using defs=PORT_TYPE;
+  using defs = PORT_TYPE;
 
 public:
+  // default constructor
+  iestream_input() noexcept {}
+  iestream_input(const char *file_path) noexcept {
+    state._parser.open_file(file_path);
+  }
 
-    // default constructor
-    iestream_input() noexcept {
+  // state definition
+  struct state_type {
+    Parser<TIME, MSG> _parser;
+    MSG _last_input_read;
+    vector<MSG> _next_input;
+    TIME _simulation_time = TIME();
+    TIME _next_time = TIME();
+    TIME _next_time2 = TIME();
+    bool _initialization = true;
+  };
+
+  // The state._parser.open_file(parth_to_file) must be done in the model
+  // instantiation constructor
+  state_type state;
+
+  // ports definition
+  using input_ports = std::tuple<>;
+  using output_ports = std::tuple<typename defs::out>;
+
+  // internal transition
+  void internal_transition() {
+    // out << "INTERNAL. IESTREAM " << endl;
+    state._simulation_time += state._next_time;
+    state._next_input.clear();
+    if (state._initialization) {
+      state._initialization = false;
+      try {
+        std::pair<TIME, MSG> parsed_line = state._parser.next_timed_input();
+        state._next_time = parsed_line.first - state._simulation_time;
+        if (state._next_time < TIME({0}))
+          throw std::exception();
+        state._last_input_read = parsed_line.second;
+        state._next_input.push_back(state._last_input_read);
+      } catch (std::exception &e) {
+        state._next_time = std::numeric_limits<TIME>::infinity();
+      }
+      try {
+        std::pair<TIME, MSG> parsed_line = state._parser.next_timed_input();
+        state._next_time2 = parsed_line.first - state._simulation_time;
+        if (state._next_time2 < TIME({0}))
+          throw std::exception();
+        state._last_input_read = parsed_line.second;
+      } catch (std::exception &e) {
+        state._next_time2 = std::numeric_limits<TIME>::infinity();
+      }
+    } else {
+      state._next_time = state._next_time2 - state._next_time;
+      state._next_input.push_back(state._last_input_read);
+      try {
+        std::pair<TIME, MSG> parsed_line = state._parser.next_timed_input();
+        state._next_time2 = parsed_line.first - state._simulation_time;
+        if (state._next_time2 < TIME({0}))
+          throw std::exception();
+        state._last_input_read = parsed_line.second;
+      } catch (std::exception &e) {
+        state._next_time2 = std::numeric_limits<TIME>::infinity();
+      }
     }
-    iestream_input(const char* file_path) noexcept {
-        state._parser.open_file(file_path);
+    while (state._next_time == state._next_time2 &
+           state._next_time != std::numeric_limits<TIME>::infinity()) {
+      state._next_input.push_back(state._last_input_read);
+      try {
+        std::pair<TIME, MSG> parsed_line = state._parser.next_timed_input();
+        state._next_time2 = parsed_line.first - state._simulation_time;
+        if (state._next_time2 < TIME({0}))
+          throw std::exception();
+        state._last_input_read = parsed_line.second;
+      } catch (std::exception &e) {
+        state._next_time2 = std::numeric_limits<TIME>::infinity();
+      }
     }
+  }
 
-    // state definition
-    struct state_type{
-        Parser<TIME, MSG> _parser;
-        MSG _last_input_read;
-        vector<MSG> _next_input;
-        TIME _simulation_time = TIME();
-        TIME _next_time = TIME();
-        TIME _next_time2 = TIME();
-        bool _initialization = true;
-    }; 
+  // external transition
+  void external_transition(TIME e,
+                           typename make_message_bags<input_ports>::type mbs) {
+    throw std::logic_error(
+        "External transition called in a model with no input ports");
+  }
 
-    //The state._parser.open_file(parth_to_file) must be done in the model instantiation constructor
-    state_type state;
+  // confluence transition
+  void
+  confluence_transition(TIME e,
+                        typename make_message_bags<input_ports>::type mbs) {
+    throw std::logic_error(
+        "Confluence transition called in a model with no input ports");
+  }
 
-    // ports definition
-    using input_ports=std::tuple<>;
-    using output_ports=std::tuple<typename defs::out>;
-
-    // internal transition
-    void internal_transition() {
-        //out << "INTERNAL. IESTREAM " << endl;
-        state._simulation_time += state._next_time;
-        state._next_input.clear();
-        if(state._initialization){
-            state._initialization = false;
-            try {
-                std::pair<TIME, MSG> parsed_line = state._parser.next_timed_input();
-                state._next_time = parsed_line.first - state._simulation_time;
-                if (state._next_time < TIME({0})) throw std::exception();
-                state._last_input_read = parsed_line.second;
-                state._next_input.push_back(state._last_input_read);
-            } catch(std::exception& e) {
-                state._next_time = std::numeric_limits<TIME>::infinity();
-            }
-            try {
-                std::pair<TIME, MSG> parsed_line = state._parser.next_timed_input();
-                state._next_time2 = parsed_line.first - state._simulation_time;
-                if (state._next_time2 < TIME({0})) throw std::exception();
-                state._last_input_read = parsed_line.second;
-            } catch(std::exception& e) {
-                state._next_time2 = std::numeric_limits<TIME>::infinity();
-            }
-        }else{
-            state._next_time = state._next_time2 - state._next_time;
-            state._next_input.push_back(state._last_input_read);
-            try {
-                std::pair<TIME, MSG> parsed_line = state._parser.next_timed_input();
-                state._next_time2 = parsed_line.first - state._simulation_time;
-                if (state._next_time2 < TIME({0})) throw std::exception();
-                state._last_input_read = parsed_line.second;
-            } catch(std::exception& e) {
-                state._next_time2 = std::numeric_limits<TIME>::infinity();
-            }
-        }
-        while(state._next_time == state._next_time2 & state._next_time != std::numeric_limits<TIME>::infinity()){
-            state._next_input.push_back(state._last_input_read);
-            try {
-                std::pair<TIME, MSG> parsed_line = state._parser.next_timed_input();
-                state._next_time2 = parsed_line.first - state._simulation_time;
-                if (state._next_time2 < TIME({0})) throw std::exception();
-                state._last_input_read = parsed_line.second;
-            } catch(std::exception& e) {
-                state._next_time2 = std::numeric_limits<TIME>::infinity();
-            }
-        }
+  // output function
+  typename make_message_bags<output_ports>::type output() const {
+    // cout << "OUTPUT. IESTREAM: ";
+    typename make_message_bags<output_ports>::type bags;
+    for (int i = 0; i < state._next_input.size(); i++) {
+      cadmium::get_messages<typename defs::out>(bags).emplace_back(
+          state._next_input[i]);
+      // cout << state._next_input[i] << " | ";
     }
+    // cout << endl;
+    return bags;
+  }
 
-    // external transition
-    void external_transition(TIME e, typename make_message_bags<input_ports>::type mbs) {
-        throw std::logic_error("External transition called in a model with no input ports");
-    }
+  // time_advance function
+  TIME time_advance() const {
+    // cout << "time advance iestream " << state._next_time << endl;
+    return state._next_time;
+  }
 
-    // confluence transition
-    void confluence_transition(TIME e, typename make_message_bags<input_ports>::type mbs) {
-        throw std::logic_error("Confluence transition called in a model with no input ports");
-    }
-
-    // output function
-    typename make_message_bags<output_ports>::type output() const {
-        //cout << "OUTPUT. IESTREAM: ";
-        typename make_message_bags<output_ports>::type bags;
-        for(int i =0; i<state._next_input.size(); i++){
-            cadmium::get_messages<typename defs::out>(bags).emplace_back(state._next_input[i]);
-            //cout << state._next_input[i] << " | ";
-        }
-        //cout << endl;
-        return bags;
-    }
-
-    // time_advance function
-    TIME time_advance() const {
-        //cout << "time advance iestream " << state._next_time << endl; 
-        return state._next_time;
-    }
-
-    friend std::ostringstream& operator<<(std::ostringstream& os, const typename iestream_input<MSG,TIME,PORT_TYPE>::state_type& i) {
-        os << "next time: " << i._next_time;
-        return os;
-    }
-
-
+  friend std::ostringstream &operator<<(
+      std::ostringstream &os,
+      const typename iestream_input<MSG, TIME, PORT_TYPE>::state_type &i) {
+    os << "next time: " << i._next_time;
+    return os;
+  }
 };
 
 #endif // CADMIUM_IESTREAM_HPP
