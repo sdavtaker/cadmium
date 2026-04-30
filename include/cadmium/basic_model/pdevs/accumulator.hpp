@@ -89,7 +89,7 @@ public:
     std::get<on_reset>(state) = false;
   }
 
-  void external_transition(TIME e,
+  void external_transition(TIME,
                            typename make_message_bags<input_ports>::type mbs) {
     if (std::get<on_reset>(state)) {
       throw std::logic_error("External transition called while on reset state");
@@ -104,7 +104,7 @@ public:
   }
 
   void
-  confluence_transition(TIME e,
+  confluence_transition(TIME,
                         typename make_message_bags<input_ports>::type mbs) {
     // process internal transition first
     internal_transition();

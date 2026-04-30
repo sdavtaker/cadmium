@@ -81,8 +81,7 @@ public:
   void internal_transition() {}
 
   // external transition
-  void external_transition(TIME e,
-                           typename make_message_box<input_ports>::type mbs) {
+  void external_transition(TIME, typename make_message_box<input_ports>::type) {
     throw std::logic_error(
         "External transition called in a model with no input ports");
   }

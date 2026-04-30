@@ -85,16 +85,15 @@ public:
   void internal_transition() {}
 
   // external transition
-  void external_transition(TIME e,
-                           typename make_message_bags<input_ports>::type mbs) {
+  void external_transition(TIME,
+                           typename make_message_bags<input_ports>::type) {
     throw std::logic_error(
         "External transition called in a model with no input ports");
   }
 
   // confluence transition
-  void
-  confluence_transition(TIME e,
-                        typename make_message_bags<input_ports>::type mbs) {
+  void confluence_transition(TIME,
+                             typename make_message_bags<input_ports>::type) {
     throw std::logic_error(
         "Confluence transition called in a model with no input ports");
   }

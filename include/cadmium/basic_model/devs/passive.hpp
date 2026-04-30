@@ -83,8 +83,8 @@ public:
   }
 
   // external transition should do nothing
-  void external_transition(TIME e,
-                           typename make_message_box<input_ports>::type mb) {}
+  void external_transition(TIME, typename make_message_box<input_ports>::type) {
+  }
 
   // output function should never be run
   typename make_message_box<output_ports>::type output() const {

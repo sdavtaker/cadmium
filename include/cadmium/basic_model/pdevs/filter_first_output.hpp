@@ -67,14 +67,13 @@ public:
   // PDEVS functions
   void internal_transition() { state++; }
 
-  void external_transition(TIME e,
-                           typename make_message_bags<input_ports>::type mbs) {
+  void external_transition(TIME,
+                           typename make_message_bags<input_ports>::type) {
     state++;
   }
 
-  void
-  confluence_transition(TIME e,
-                        typename make_message_bags<input_ports>::type mbs) {
+  void confluence_transition(TIME,
+                             typename make_message_bags<input_ports>::type) {
     assert(false); // test should not call confluence
   }
 

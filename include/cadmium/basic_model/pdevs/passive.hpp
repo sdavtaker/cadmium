@@ -83,13 +83,12 @@ public:
   }
 
   // external transition should do nothing
-  void external_transition(TIME e,
-                           typename make_message_bags<input_ports>::type mbs) {}
+  void external_transition(TIME,
+                           typename make_message_bags<input_ports>::type) {}
 
   // confluence transition should never be run
-  void
-  confluence_transition(TIME e,
-                        typename make_message_bags<input_ports>::type mbs) {
+  void confluence_transition(TIME,
+                             typename make_message_bags<input_ports>::type) {
     throw std::logic_error("Confluence transition called in a passive model");
   }
 
