@@ -65,6 +65,10 @@ using coupled_generator =
 
 auto coupled = cadmium::dynamic::translate::make_dynamic_coupled_model<
     float, coupled_generator>();
+
+auto atomic =
+    cadmium::dynamic::translate::make_dynamic_atomic_model<test_generator,
+                                                           float>();
 } // namespace
 
 SCENARIO("dynamic runner stops at the requested end time and returns it",
@@ -74,6 +78,17 @@ SCENARIO("dynamic runner stops at the requested end time and returns it",
     WHEN("run_until is called with end time 60") {
       float end = r.run_until(60.0);
       THEN("the returned time equals 60") { CHECK(end == 60.0f); }
+    }
+  }
+}
+
+SCENARIO("dynamic runner accepts an atomic model at the top level",
+         "[dynamic][runner]") {
+  GIVEN("a dynamic runner initialised at time 0 directly over an atomic") {
+    cadmium::dynamic::engine::runner<float> r(atomic, 0.0);
+    WHEN("run_until is called with end time 5") {
+      float end = r.run_until(5.0);
+      THEN("the returned time equals 5") { CHECK(end == 5.0f); }
     }
   }
 }

@@ -28,8 +28,10 @@
 
 #include <iostream>
 #include <limits>
+#include <memory>
 
 #include <cadmium/engine/pdevs_dynamic_coordinator.hpp>
+#include <cadmium/engine/pdevs_dynamic_simulator.hpp>
 #include <cadmium/logger/cadmium_log.hpp>
 
 namespace cadmium {
@@ -39,19 +41,34 @@ namespace engine {
 template <class TIME> class runner {
   TIME _next;
   bool _progress_bar = false;
-  cadmium::dynamic::engine::coordinator<TIME> _top_coordinator;
+  std::shared_ptr<cadmium::dynamic::engine::engine<TIME>> _top_engine;
+
+  void init(const TIME &init_time) {
+    cadmium::log::emit(cadmium::log::level::info, "run_global_time", "start",
+                       cadmium::log::to_sim_double(init_time));
+    cadmium::log::emit(cadmium::log::level::info, "run_info", "Preparing model",
+                       cadmium::log::to_sim_double(init_time));
+    _top_engine->init(init_time);
+    _next = _top_engine->next();
+  }
 
 public:
   explicit runner(
       std::shared_ptr<cadmium::dynamic::modeling::coupled<TIME>> coupled_model,
       const TIME &init_time)
-      : _top_coordinator(coupled_model) {
-    cadmium::log::emit(cadmium::log::level::info, "run_global_time", "start",
-                       cadmium::log::to_sim_double(init_time));
-    cadmium::log::emit(cadmium::log::level::info, "run_info", "Preparing model",
-                       cadmium::log::to_sim_double(init_time));
-    _top_coordinator.init(init_time);
-    _next = _top_coordinator.next();
+      : _top_engine(
+            std::make_shared<cadmium::dynamic::engine::coordinator<TIME>>(
+                coupled_model)) {
+    init(init_time);
+  }
+
+  explicit runner(
+      std::shared_ptr<cadmium::dynamic::modeling::atomic_abstract<TIME>>
+          atomic_model,
+      const TIME &init_time)
+      : _top_engine(std::make_shared<cadmium::dynamic::engine::simulator<TIME>>(
+            atomic_model)) {
+    init(init_time);
   }
 
   TIME run_until(const TIME &t) {
@@ -59,9 +76,9 @@ public:
     while (_next < t) {
       cadmium::log::emit(cadmium::log::level::debug, "run_global_time", "step",
                          cadmium::log::to_sim_double(_next));
-      _top_coordinator.collect_outputs(_next);
-      _top_coordinator.advance_simulation(_next);
-      _next = _top_coordinator.next();
+      _top_engine->collect_outputs(_next);
+      _top_engine->advance_simulation(_next);
+      _next = _top_engine->next();
       if (_progress_bar)
         progress_bar_meter(_next, t);
     }

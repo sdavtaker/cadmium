@@ -77,3 +77,13 @@ SCENARIO("runner stops at the requested end time and returns it",
     }
   }
 }
+
+SCENARIO("runner accepts an atomic model at the top level", "[pdevs][runner]") {
+  GIVEN("a runner initialised at time 0 directly over a generator atomic") {
+    cadmium::engine::runner<float, test_generator> r{0.0f};
+    WHEN("run_until is called with end time 5") {
+      float result = r.run_until(5.0f);
+      THEN("the returned time equals 5") { CHECK(result == 5.0f); }
+    }
+  }
+}

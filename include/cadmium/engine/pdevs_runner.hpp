@@ -29,6 +29,8 @@
 
 #include <cadmium/concepts/pdevs_concepts.hpp>
 #include <cadmium/engine/pdevs_coordinator.hpp>
+#include <cadmium/engine/pdevs_engine_helpers.hpp>
+#include <cadmium/engine/pdevs_simulator.hpp>
 #include <cadmium/logger/cadmium_log.hpp>
 
 namespace cadmium {
@@ -36,10 +38,15 @@ namespace engine {
 
 template <class TIME, template <class> class MODEL>
   requires cadmium::concepts::Time<TIME> &&
-           cadmium::concepts::pdevs::CoupledModel<MODEL<TIME>>
+           (cadmium::concepts::pdevs::CoupledModel<MODEL<TIME>> ||
+            cadmium::concepts::pdevs::AtomicModel<MODEL<TIME>, TIME>)
 class runner {
+  using engine_type = typename cadmium::engine::select_engine_type<
+      cadmium::concepts::pdevs::AtomicModel<MODEL<TIME>, TIME>, MODEL,
+      TIME>::type;
+
   TIME _next{};
-  cadmium::engine::coordinator<MODEL, TIME> top_coordinator;
+  engine_type _top_engine;
 
 public:
   explicit runner(const TIME &init_time) {
@@ -47,8 +54,8 @@ public:
                        cadmium::log::to_sim_double(init_time));
     cadmium::log::emit(cadmium::log::level::info, "run_info", "Preparing model",
                        cadmium::log::to_sim_double(init_time));
-    top_coordinator.init(init_time);
-    _next = top_coordinator.next();
+    _top_engine.init(init_time);
+    _next = _top_engine.next();
   }
 
   TIME run_until(const TIME &t) {
@@ -56,9 +63,9 @@ public:
     while (_next < t) {
       cadmium::log::emit(cadmium::log::level::debug, "run_global_time", "step",
                          cadmium::log::to_sim_double(_next));
-      top_coordinator.collect_outputs(_next);
-      top_coordinator.advance_simulation(_next);
-      _next = top_coordinator.next();
+      _top_engine.collect_outputs(_next);
+      _top_engine.advance_simulation(_next);
+      _next = _top_engine.next();
     }
     cadmium::log::emit(cadmium::log::level::info, "run_info", "Finished run");
     return _next;

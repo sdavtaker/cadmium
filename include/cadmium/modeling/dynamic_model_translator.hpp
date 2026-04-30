@@ -104,8 +104,7 @@ struct make_dynamic_ic_impl {
 
 template <typename TIME, typename IC_TUPLE>
 struct make_dynamic_ic_impl<TIME, IC_TUPLE, 0> {
-  static void value(models_by_type &translated_models,
-                    cadmium::dynamic::modeling::ICs &ret) {
+  static void value(models_by_type &, cadmium::dynamic::modeling::ICs &) {
     // do nothing
   }
 };
@@ -165,8 +164,7 @@ struct make_dynamic_eic_impl {
 
 template <typename TIME, typename EIC_TUPLE>
 struct make_dynamic_eic_impl<TIME, EIC_TUPLE, 0> {
-  static void value(models_by_type &translated_models,
-                    cadmium::dynamic::modeling::EICs &ret) {
+  static void value(models_by_type &, cadmium::dynamic::modeling::EICs &) {
     // do nothing
   }
 };
@@ -226,10 +224,8 @@ struct make_dynamic_eoc_impl {
 
 template <typename TIME, typename EOC_TUPLE>
 struct make_dynamic_eoc_impl<TIME, EOC_TUPLE, 0> {
-  static void value(const models_by_type &translated_models,
-                    cadmium::dynamic::modeling::EOCs &ret) {
-    // do nothing
-  }
+  static void value(const models_by_type &,
+                    cadmium::dynamic::modeling::EOCs &) {}
 };
 
 /**
@@ -342,7 +338,7 @@ template <typename TIME, template <typename T> class MT,
           template <template <typename T2> class M> class COUPLED_TRANSLATOR>
 struct make_dynamic_models_impl<TIME, MT, COUPLED_TRANSLATOR, 0> {
 
-  static void make_models(models_by_type &ret) {
+  static void make_models(models_by_type &) {
     // nothing to do here;
   }
 };
