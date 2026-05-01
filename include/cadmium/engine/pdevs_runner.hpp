@@ -67,6 +67,10 @@ public:
       _top_engine.advance_simulation(_next);
       _next = _top_engine.next();
     }
+    if (_next == std::numeric_limits<TIME>::infinity()) {
+      cadmium::log::emit(cadmium::log::level::warn, "run_info",
+                         "simulation passivated before reaching end time");
+    }
     cadmium::log::emit(cadmium::log::level::info, "run_info", "Finished run");
     return _next;
   }

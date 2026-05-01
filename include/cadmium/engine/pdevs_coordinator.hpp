@@ -85,6 +85,9 @@ public:
                        _model_id, cadmium::log::to_sim_double(t));
 
     if (_next < t) {
+      cadmium::log::emit(cadmium::log::level::error, "coor_error",
+                         _model_id + ": collect_outputs called past next event",
+                         cadmium::log::to_sim_double(t));
       throw std::domain_error(
           "Trying to obtain output when not internal event is scheduled");
     } else if (_next == t) {
@@ -118,6 +121,10 @@ public:
                        _model_id, cadmium::log::to_sim_double(t));
 
     if (_next < t || t < _last) {
+      cadmium::log::emit(cadmium::log::level::error, "coor_error",
+                         _model_id +
+                             ": advance_simulation called outside time scope",
+                         cadmium::log::to_sim_double(t));
       throw std::domain_error(
           "Trying to obtain output when out of the advance time scope");
     } else {

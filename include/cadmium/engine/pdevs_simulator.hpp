@@ -81,6 +81,9 @@ public:
     _inbox = in_bags_type{};
 
     if (_next < t) {
+      cadmium::log::emit(cadmium::log::level::error, "sim_error",
+                         _model_id + ": collect_outputs called past next event",
+                         cadmium::log::to_sim_double(t));
       throw std::domain_error(
           "Trying to obtain output when not internal event is scheduled");
     } else if (_next == t) {
@@ -118,9 +121,16 @@ public:
                        _model_id, cadmium::log::to_sim_double(t));
 
     if (t < _last) {
+      cadmium::log::emit(cadmium::log::level::error, "sim_error",
+                         _model_id + ": advance_simulation called in the past",
+                         cadmium::log::to_sim_double(t));
       throw std::domain_error("Event received for executing in the past of "
                               "current simulation time");
     } else if (_next < t) {
+      cadmium::log::emit(
+          cadmium::log::level::error, "sim_error",
+          _model_id + ": advance_simulation called past next scheduled event",
+          cadmium::log::to_sim_double(t));
       throw std::domain_error(
           "Event received for executing after next internal event");
     } else {

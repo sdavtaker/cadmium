@@ -78,6 +78,9 @@ public:
 
       if (m_coupled == nullptr) {
         if (m_atomic == nullptr) {
+          cadmium::log::emit(cadmium::log::level::error, "coor_error",
+                             _model_id +
+                                 ": submodel is neither coupled nor atomic");
           throw std::domain_error(
               "Invalid submodel is neither coupled nor atomic");
         }
@@ -86,6 +89,9 @@ public:
                 m_atomic));
       } else {
         if (m_atomic != nullptr) {
+          cadmium::log::emit(cadmium::log::level::error, "coor_error",
+                             _model_id +
+                                 ": submodel is both coupled and atomic");
           throw std::domain_error(
               "Invalid submodel is defined as both coupled and atomic");
         }
@@ -100,6 +106,8 @@ public:
 
     for (const auto &eoc : coupled_model->_eoc) {
       if (engines_by_id.find(eoc._from) == engines_by_id.end()) {
+        cadmium::log::emit(cadmium::log::level::error, "coor_error",
+                           _model_id + ": EOC from unknown model " + eoc._from);
         throw std::domain_error("External output coupling from invalid model");
       }
       cadmium::dynamic::engine::external_coupling<TIME> new_eoc;
@@ -110,6 +118,8 @@ public:
 
     for (const auto &eic : coupled_model->_eic) {
       if (engines_by_id.find(eic._to) == engines_by_id.end()) {
+        cadmium::log::emit(cadmium::log::level::error, "coor_error",
+                           _model_id + ": EIC to unknown model " + eic._to);
         throw std::domain_error("External input coupling to invalid model");
       }
       cadmium::dynamic::engine::external_coupling<TIME> new_eic;
@@ -121,6 +131,9 @@ public:
     for (const auto &ic : coupled_model->_ic) {
       if (engines_by_id.find(ic._from) == engines_by_id.end() ||
           engines_by_id.find(ic._to) == engines_by_id.end()) {
+        cadmium::log::emit(cadmium::log::level::error, "coor_error",
+                           _model_id + ": IC references unknown model(s) " +
+                               ic._from + " -> " + ic._to);
         throw std::domain_error("Internal coupling to invalid model");
       }
       cadmium::dynamic::engine::internal_coupling<TIME> new_ic;
@@ -150,6 +163,9 @@ public:
                        _model_id, cadmium::log::to_sim_double(t));
 
     if (_next < t) {
+      cadmium::log::emit(cadmium::log::level::error, "coor_error",
+                         _model_id + ": collect_outputs called past next event",
+                         cadmium::log::to_sim_double(t));
       throw std::domain_error(
           "Trying to obtain output when not internal event is scheduled");
     } else if (_next == t) {
@@ -173,6 +189,10 @@ public:
                        _model_id, cadmium::log::to_sim_double(t));
 
     if (_next < t || t < _last) {
+      cadmium::log::emit(cadmium::log::level::error, "coor_error",
+                         _model_id +
+                             ": advance_simulation called outside time scope",
+                         cadmium::log::to_sim_double(t));
       throw std::domain_error(
           "Trying to obtain output when out of the advance time scope");
     }
