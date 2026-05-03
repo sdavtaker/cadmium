@@ -24,8 +24,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <catch2/catch_test_macros.hpp>
-
 #include <cadmium/basic_model/pdevs/accumulator.hpp>
 #include <cadmium/basic_model/pdevs/generator.hpp>
 #include <cadmium/basic_model/pdevs/int_generator_one_sec.hpp>
@@ -33,6 +31,8 @@
 #include <cadmium/engine/pdevs_runner.hpp>
 #include <cadmium/logger/tuple_to_ostream.hpp>
 #include <cadmium/modeling/coupling.hpp>
+
+#include <catch2/catch_test_macros.hpp>
 
 // ---------------------------------------------------------------------------
 // Shared model definitions
@@ -43,47 +43,51 @@ struct test_tick {};
 using out_port = cadmium::basic_models::pdevs::generator_defs<test_tick>::out;
 
 template <typename TIME>
-struct test_generator
-    : public cadmium::basic_models::pdevs::generator<test_tick, TIME> {
-  float period() const override { return 1.0f; }
-  test_tick output_message() const override { return test_tick{}; }
+struct test_generator : public cadmium::basic_models::pdevs::generator<test_tick, TIME> {
+    float period() const override {
+        return 1.0f;
+    }
+    test_tick output_message() const override {
+        return test_tick{};
+    }
 };
 
 using iports = std::tuple<>;
 struct coupled_out_port : public cadmium::out_port<test_tick> {};
-using oports = std::tuple<coupled_out_port>;
+using oports    = std::tuple<coupled_out_port>;
 using submodels = cadmium::modeling::models_tuple<test_generator>;
-using eics = std::tuple<>;
-using eocs = std::tuple<
-    cadmium::modeling::EOC<test_generator, out_port, coupled_out_port>>;
-using ics = std::tuple<>;
+using eics      = std::tuple<>;
+using eocs      = std::tuple<cadmium::modeling::EOC<test_generator, out_port, coupled_out_port>>;
+using ics       = std::tuple<>;
 
 template <typename TIME>
 using coupled_generator =
-    cadmium::modeling::pdevs::coupled_model<TIME, iports, oports, submodels,
-                                            eics, eocs, ics>;
+    cadmium::modeling::pdevs::coupled_model<TIME, iports, oports, submodels, eics, eocs, ics>;
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-SCENARIO("runner stops at the requested end time and returns it",
-         "[pdevs][runner]") {
-  GIVEN("a runner initialised at time 0 over a coupled generator model") {
-    cadmium::engine::runner<float, coupled_generator> r{0.0f};
-    WHEN("run_until is called with end time 60") {
-      float result = r.run_until(60.0f);
-      THEN("the returned time equals 60") { CHECK(result == 60.0f); }
+SCENARIO("runner stops at the requested end time and returns it", "[pdevs][runner]") {
+    GIVEN("a runner initialised at time 0 over a coupled generator model") {
+        cadmium::engine::runner<float, coupled_generator> r{0.0f};
+        WHEN("run_until is called with end time 60") {
+            float result = r.run_until(60.0f);
+            THEN("the returned time equals 60") {
+                CHECK(result == 60.0f);
+            }
+        }
     }
-  }
 }
 
 SCENARIO("runner accepts an atomic model at the top level", "[pdevs][runner]") {
-  GIVEN("a runner initialised at time 0 directly over a generator atomic") {
-    cadmium::engine::runner<float, test_generator> r{0.0f};
-    WHEN("run_until is called with end time 5") {
-      float result = r.run_until(5.0f);
-      THEN("the returned time equals 5") { CHECK(result == 5.0f); }
+    GIVEN("a runner initialised at time 0 directly over a generator atomic") {
+        cadmium::engine::runner<float, test_generator> r{0.0f};
+        WHEN("run_until is called with end time 5") {
+            float result = r.run_until(5.0f);
+            THEN("the returned time equals 5") {
+                CHECK(result == 5.0f);
+            }
+        }
     }
-  }
 }

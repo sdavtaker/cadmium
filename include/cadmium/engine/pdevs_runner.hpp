@@ -34,53 +34,52 @@
 #include <cadmium/logger/cadmium_log.hpp>
 
 namespace cadmium {
-namespace engine {
+    namespace engine {
 
-template <class TIME, template <class> class MODEL>
-  requires cadmium::concepts::Time<TIME> &&
-           (cadmium::concepts::pdevs::CoupledModel<MODEL<TIME>> ||
-            cadmium::concepts::pdevs::AtomicModel<MODEL<TIME>, TIME>)
-class runner {
-  using engine_type = typename cadmium::engine::select_engine_type<
-      cadmium::concepts::pdevs::AtomicModel<MODEL<TIME>, TIME>, MODEL,
-      TIME>::type;
+        template <class TIME, template <class> class MODEL>
+            requires cadmium::concepts::Time<TIME> &&
+                     (cadmium::concepts::pdevs::CoupledModel<MODEL<TIME>> ||
+                      cadmium::concepts::pdevs::AtomicModel<MODEL<TIME>, TIME>)
+        class runner {
+            using engine_type = typename cadmium::engine::select_engine_type<
+                cadmium::concepts::pdevs::AtomicModel<MODEL<TIME>, TIME>, MODEL, TIME>::type;
 
-  TIME _next{};
-  engine_type _top_engine;
+            TIME _next{};
+            engine_type _top_engine;
 
-public:
-  explicit runner(const TIME &init_time) {
-    cadmium::log::emit(cadmium::log::level::info, "run_global_time", "start",
-                       cadmium::log::to_sim_double(init_time));
-    cadmium::log::emit(cadmium::log::level::info, "run_info", "Preparing model",
-                       cadmium::log::to_sim_double(init_time));
-    _top_engine.init(init_time);
-    _next = _top_engine.next();
-  }
+          public:
+            explicit runner(const TIME &init_time) {
+                cadmium::log::emit(cadmium::log::level::info, "run_global_time", "start",
+                                   cadmium::log::to_sim_double(init_time));
+                cadmium::log::emit(cadmium::log::level::info, "run_info", "Preparing model",
+                                   cadmium::log::to_sim_double(init_time));
+                _top_engine.init(init_time);
+                _next = _top_engine.next();
+            }
 
-  TIME run_until(const TIME &t) {
-    cadmium::log::emit(cadmium::log::level::info, "run_info", "Starting run");
-    while (_next < t) {
-      cadmium::log::emit(cadmium::log::level::debug, "run_global_time", "step",
-                         cadmium::log::to_sim_double(_next));
-      _top_engine.collect_outputs(_next);
-      _top_engine.advance_simulation(_next);
-      _next = _top_engine.next();
-    }
-    if (_next == std::numeric_limits<TIME>::infinity()) {
-      cadmium::log::emit(cadmium::log::level::warn, "run_info",
-                         "simulation passivated before reaching end time");
-    }
-    cadmium::log::emit(cadmium::log::level::info, "run_info", "Finished run");
-    return _next;
-  }
+            TIME run_until(const TIME &t) {
+                cadmium::log::emit(cadmium::log::level::info, "run_info", "Starting run");
+                while (_next < t) {
+                    cadmium::log::emit(cadmium::log::level::debug, "run_global_time", "step",
+                                       cadmium::log::to_sim_double(_next));
+                    _top_engine.collect_outputs(_next);
+                    _top_engine.advance_simulation(_next);
+                    _next = _top_engine.next();
+                }
+                if (_next == std::numeric_limits<TIME>::infinity()) {
+                    cadmium::log::emit(cadmium::log::level::warn, "run_info",
+                                       "simulation passivated before reaching end time");
+                }
+                cadmium::log::emit(cadmium::log::level::info, "run_info", "Finished run");
+                return _next;
+            }
 
-  void run_until_passivate() {
-    run_until(std::numeric_limits<TIME>::infinity());
-  }
-};
+            void run_until_passivate() {
+                run_until(std::numeric_limits<TIME>::infinity());
+            }
+        };
 
-} // namespace engine
+    } // namespace engine
 } // namespace cadmium
 
 #endif // CADMIUM_PDEVS_RUNNER_HPP

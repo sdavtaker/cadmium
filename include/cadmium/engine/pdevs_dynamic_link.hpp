@@ -27,136 +27,132 @@
 #ifndef CADMIUM_PDEVS_DYNAMIC_LINK_HPP
 #define CADMIUM_PDEVS_DYNAMIC_LINK_HPP
 
-#include <memory>
-#include <typeindex>
-#include <typeinfo>
-
 #include <cadmium/logger/common_loggers_helpers.hpp>
 #include <cadmium/logger/dynamic_common_loggers.hpp>
 #include <cadmium/modeling/dynamic_message_bag.hpp>
 
+#include <memory>
+#include <typeindex>
+#include <typeinfo>
+
 namespace cadmium {
-namespace dynamic {
-namespace engine {
+    namespace dynamic {
+        namespace engine {
 
-class link_abstract {
-public:
-  virtual std::type_index from_type_index() const = 0;
+            class link_abstract {
+              public:
+                virtual std::type_index from_type_index() const = 0;
 
-  virtual std::type_index from_port_type_index() const = 0;
+                virtual std::type_index from_port_type_index() const = 0;
 
-  virtual std::type_index to_type_index() const = 0;
+                virtual std::type_index to_type_index() const = 0;
 
-  virtual std::type_index to_port_type_index() const = 0;
+                virtual std::type_index to_port_type_index() const = 0;
 
-  virtual cadmium::dynamic::logger::routed_messages
-  route_messages(const cadmium::dynamic::message_bags &bags_from,
-                 cadmium::dynamic::message_bags &bags_to) const = 0;
+                virtual cadmium::dynamic::logger::routed_messages
+                route_messages(const cadmium::dynamic::message_bags &bags_from,
+                               cadmium::dynamic::message_bags &bags_to) const = 0;
 
-  virtual ~link_abstract() {}
-};
+                virtual ~link_abstract() {}
+            };
 
-template <typename PORT_FROM, typename PORT_TO>
-class link : public link_abstract {
-public:
-  using from_message_type = typename PORT_FROM::message_type;
-  using from_message_bag_type = typename cadmium::message_bag<PORT_FROM>;
-  using to_message_type = typename PORT_TO::message_type;
-  using to_message_bag_type = typename cadmium::message_bag<PORT_TO>;
+            template <typename PORT_FROM, typename PORT_TO> class link : public link_abstract {
+              public:
+                using from_message_type     = typename PORT_FROM::message_type;
+                using from_message_bag_type = typename cadmium::message_bag<PORT_FROM>;
+                using to_message_type       = typename PORT_TO::message_type;
+                using to_message_bag_type   = typename cadmium::message_bag<PORT_TO>;
 
-  link() {
+                link() {
 #ifndef RT_ARM_MBED
-    static_assert(std::is_same<from_message_type, to_message_type>::value,
-                  "PORT_FROM message type and PORT_TO message types must be "
-                  "the same type");
+                    static_assert(std::is_same<from_message_type, to_message_type>::value,
+                                  "PORT_FROM message type and PORT_TO message types must be "
+                                  "the same type");
 #endif
-  }
+                }
 
-  std::type_index from_type_index() const override {
-    return typeid(from_message_bag_type);
-  }
+                std::type_index from_type_index() const override {
+                    return typeid(from_message_bag_type);
+                }
 
-  std::type_index from_port_type_index() const override {
-    return typeid(PORT_FROM);
-  }
+                std::type_index from_port_type_index() const override {
+                    return typeid(PORT_FROM);
+                }
 
-  std::type_index to_type_index() const override {
-    return typeid(to_message_bag_type);
-  }
+                std::type_index to_type_index() const override {
+                    return typeid(to_message_bag_type);
+                }
 
-  std::type_index to_port_type_index() const override {
-    return typeid(PORT_TO);
-  }
+                std::type_index to_port_type_index() const override {
+                    return typeid(PORT_TO);
+                }
 
-  cadmium::dynamic::logger::routed_messages
-  pass_messages(const std::any &bag_from, std::any &bag_to) const {
-    from_message_bag_type b_from =
-        std::any_cast<from_message_bag_type>(bag_from);
-    to_message_bag_type *b_to = std::any_cast<to_message_bag_type>(&bag_to);
-    b_to->messages.insert(b_to->messages.end(), b_from.messages.begin(),
-                          b_from.messages.end());
+                cadmium::dynamic::logger::routed_messages pass_messages(const std::any &bag_from,
+                                                                        std::any &bag_to) const {
+                    from_message_bag_type b_from = std::any_cast<from_message_bag_type>(bag_from);
+                    to_message_bag_type *b_to    = std::any_cast<to_message_bag_type>(&bag_to);
+                    b_to->messages.insert(b_to->messages.end(), b_from.messages.begin(),
+                                          b_from.messages.end());
 
-    return cadmium::dynamic::logger::routed_messages(
-        cadmium::logger::messages_as_strings(b_from.messages),
-        cadmium::logger::messages_as_strings(b_to->messages),
-        typeid(PORT_FROM).name(), typeid(PORT_TO).name());
-  }
+                    return cadmium::dynamic::logger::routed_messages(
+                        cadmium::logger::messages_as_strings(b_from.messages),
+                        cadmium::logger::messages_as_strings(b_to->messages),
+                        typeid(PORT_FROM).name(), typeid(PORT_TO).name());
+                }
 
-  cadmium::dynamic::logger::routed_messages
-  pass_messages_to_new_bag(const std::any &bag_from,
-                           cadmium::dynamic::message_bags &bags_to) const {
-    from_message_bag_type b_from =
-        std::any_cast<from_message_bag_type>(bag_from);
-    to_message_bag_type b_to;
-    b_to.messages.insert(b_to.messages.end(), b_from.messages.begin(),
-                         b_from.messages.end());
-    bags_to[this->to_port_type_index()] = b_to;
+                cadmium::dynamic::logger::routed_messages
+                pass_messages_to_new_bag(const std::any &bag_from,
+                                         cadmium::dynamic::message_bags &bags_to) const {
+                    from_message_bag_type b_from = std::any_cast<from_message_bag_type>(bag_from);
+                    to_message_bag_type b_to;
+                    b_to.messages.insert(b_to.messages.end(), b_from.messages.begin(),
+                                         b_from.messages.end());
+                    bags_to[this->to_port_type_index()] = b_to;
 
-    return cadmium::dynamic::logger::routed_messages(
-        cadmium::logger::messages_as_strings(b_from.messages),
-        cadmium::logger::messages_as_strings(b_to.messages),
-        typeid(PORT_FROM).name(), typeid(PORT_TO).name());
-  }
+                    return cadmium::dynamic::logger::routed_messages(
+                        cadmium::logger::messages_as_strings(b_from.messages),
+                        cadmium::logger::messages_as_strings(b_to.messages),
+                        typeid(PORT_FROM).name(), typeid(PORT_TO).name());
+                }
 
-  /**
-   * @note This methods assumes the port is defined in the message_bags
-   * parameter bag, if is not the case, the function throws a std::map out of
-   * range exception.
-   *
-   * @param bags - The cadmium::dynamic::message_bags to check if there is
-   * messages in the from port
-   * @return true if there is messages, otherwise false
-   */
-  bool
-  is_there_messages_to_route(const cadmium::dynamic::message_bags &bags) const {
-    return std::any_cast<from_message_bag_type>(
-               bags.at(this->from_port_type_index()))
-               .messages.size() > 0;
-  }
+                /**
+                 * @note This methods assumes the port is defined in the message_bags
+                 * parameter bag, if is not the case, the function throws a std::map out of
+                 * range exception.
+                 *
+                 * @param bags - The cadmium::dynamic::message_bags to check if there is
+                 * messages in the from port
+                 * @return true if there is messages, otherwise false
+                 */
+                bool is_there_messages_to_route(const cadmium::dynamic::message_bags &bags) const {
+                    return std::any_cast<from_message_bag_type>(
+                               bags.at(this->from_port_type_index()))
+                               .messages.size() > 0;
+                }
 
-  cadmium::dynamic::logger::routed_messages
-  route_messages(const cadmium::dynamic::message_bags &bags_from,
-                 cadmium::dynamic::message_bags &bags_to) const override {
-    if (bags_from.find(this->from_port_type_index()) != bags_from.cend()) {
+                cadmium::dynamic::logger::routed_messages
+                route_messages(const cadmium::dynamic::message_bags &bags_from,
+                               cadmium::dynamic::message_bags &bags_to) const override {
+                    if (bags_from.find(this->from_port_type_index()) != bags_from.cend()) {
 
-      if (bags_to.find(this->to_port_type_index()) != bags_to.cend()) {
-        return this->pass_messages(bags_from.at(this->from_port_type_index()),
-                                   bags_to.at(this->to_port_type_index()));
-      }
+                        if (bags_to.find(this->to_port_type_index()) != bags_to.cend()) {
+                            return this->pass_messages(bags_from.at(this->from_port_type_index()),
+                                                       bags_to.at(this->to_port_type_index()));
+                        }
 
-      if (this->is_there_messages_to_route(bags_from)) {
-        return this->pass_messages_to_new_bag(
-            bags_from.at(this->from_port_type_index()), bags_to);
-      }
-    }
+                        if (this->is_there_messages_to_route(bags_from)) {
+                            return this->pass_messages_to_new_bag(
+                                bags_from.at(this->from_port_type_index()), bags_to);
+                        }
+                    }
 
-    cadmium::dynamic::logger::routed_messages empty_ret(
-        typeid(PORT_FROM).name(), typeid(PORT_TO).name());
-    return empty_ret; // if no messages where routed, it returns an empty vector
-  }
-};
-} // namespace engine
-} // namespace dynamic
+                    cadmium::dynamic::logger::routed_messages empty_ret(typeid(PORT_FROM).name(),
+                                                                        typeid(PORT_TO).name());
+                    return empty_ret; // if no messages where routed, it returns an empty vector
+                }
+            };
+        } // namespace engine
+    } // namespace dynamic
 } // namespace cadmium
 
 #endif // CADMIUM_PDEVS_DYNAMIC_LINK_HPP

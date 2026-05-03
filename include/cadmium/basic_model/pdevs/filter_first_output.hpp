@@ -29,64 +29,65 @@
 
 #include <cadmium/modeling/message_bag.hpp>
 #include <cadmium/modeling/ports.hpp>
+
 #include <cassert>
 #include <limits>
 
 namespace cadmium::basic_models::pdevs {
 
-/**
- * @brief filter_first_output PDEVS Model used for testing a bug reported in
- * 2017
- *
- * The model starts in passive state
- * When first exogenous message is received a 1 is output immediately
- * All following messages are discarded
- * For the purpose of test all messages are integers
- */
+    /**
+     * @brief filter_first_output PDEVS Model used for testing a bug reported in
+     * 2017
+     *
+     * The model starts in passive state
+     * When first exogenous message is received a 1 is output immediately
+     * All following messages are discarded
+     * For the purpose of test all messages are integers
+     */
 
-struct filter_first_output_defs {
-  // ports
-  struct in : public in_port<int> {};
-  struct out : public out_port<int> {};
-};
+    struct filter_first_output_defs {
+        // ports
+        struct in : public in_port<int> {};
+        struct out : public out_port<int> {};
+    };
 
-template <typename TIME> class filter_first_output {
-  using defs = filter_first_output_defs; // putting definitions in context
-public:
-  // state
-  using state_type = int;
-  state_type state = 0;
+    template <typename TIME> class filter_first_output {
+        using defs = filter_first_output_defs; // putting definitions in context
+      public:
+        // state
+        using state_type = int;
+        state_type state = 0;
 
-  // default constructor
-  constexpr filter_first_output() noexcept {}
+        // default constructor
+        constexpr filter_first_output() noexcept {}
 
-  // ports_definition
-  using input_ports = std::tuple<typename defs::in>;
-  using output_ports = std::tuple<typename defs::out>;
+        // ports_definition
+        using input_ports  = std::tuple<typename defs::in>;
+        using output_ports = std::tuple<typename defs::out>;
 
-  // PDEVS functions
-  void internal_transition() { state++; }
+        // PDEVS functions
+        void internal_transition() {
+            state++;
+        }
 
-  void external_transition(TIME,
-                           typename make_message_bags<input_ports>::type) {
-    state++;
-  }
+        void external_transition(TIME, typename make_message_bags<input_ports>::type) {
+            state++;
+        }
 
-  void confluence_transition(TIME,
-                             typename make_message_bags<input_ports>::type) {
-    assert(false); // test should not call confluence
-  }
+        void confluence_transition(TIME, typename make_message_bags<input_ports>::type) {
+            assert(false); // test should not call confluence
+        }
 
-  typename make_message_bags<output_ports>::type output() const {
-    typename make_message_bags<output_ports>::type outmb;
-    get_messages<defs::out>(outmb).emplace_back(1);
-    return outmb;
-  }
+        typename make_message_bags<output_ports>::type output() const {
+            typename make_message_bags<output_ports>::type outmb;
+            get_messages<defs::out>(outmb).emplace_back(1);
+            return outmb;
+        }
 
-  TIME time_advance() const {
-    return (state == 1 ? TIME{} : std::numeric_limits<TIME>::infinity());
-  }
-};
+        TIME time_advance() const {
+            return (state == 1 ? TIME{} : std::numeric_limits<TIME>::infinity());
+        }
+    };
 } // namespace cadmium::basic_models::pdevs
 
 #endif // CADMIUM_PDEVS_FILTER_FIRST_OUTPUT_HPP

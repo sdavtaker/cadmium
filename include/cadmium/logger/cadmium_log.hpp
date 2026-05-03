@@ -30,106 +30,104 @@
 #include <exception>
 #include <format>
 #include <optional>
+#include <spdlog/sinks/stdout_sinks.h>
+#include <spdlog/spdlog.h>
 #include <string>
 #include <string_view>
 
-#include <spdlog/sinks/stdout_sinks.h>
-#include <spdlog/spdlog.h>
-
 namespace cadmium::log {
 
-enum class level { debug, info, warn, error };
+    enum class level { debug, info, warn, error };
 
-namespace detail {
+    namespace detail {
 
-inline std::shared_ptr<spdlog::logger> &instance() noexcept {
-  static std::shared_ptr<spdlog::logger> log;
-  return log;
-}
+        inline std::shared_ptr<spdlog::logger> &instance() noexcept {
+            static std::shared_ptr<spdlog::logger> log;
+            return log;
+        }
 
-inline std::string_view level_str(level l) noexcept {
-  switch (l) {
-  case level::debug:
-    return "debug";
-  case level::info:
-    return "info";
-  case level::warn:
-    return "warn";
-  case level::error:
-    return "error";
-  }
-  return "info";
-}
+        inline std::string_view level_str(level l) noexcept {
+            switch (l) {
+            case level::debug:
+                return "debug";
+            case level::info:
+                return "info";
+            case level::warn:
+                return "warn";
+            case level::error:
+                return "error";
+            }
+            return "info";
+        }
 
-inline std::string escape_json(std::string_view s) {
-  std::string out;
-  out.reserve(s.size());
-  for (char c : s) {
-    if (c == '"')
-      out += "\\\"";
-    else if (c == '\\')
-      out += "\\\\";
-    else if (c == '\n')
-      out += "\\n";
-    else if (c == '\r')
-      out += "\\r";
-    else if (c == '\t')
-      out += "\\t";
-    else
-      out += c;
-  }
-  return out;
-}
+        inline std::string escape_json(std::string_view s) {
+            std::string out;
+            out.reserve(s.size());
+            for (char c : s) {
+                if (c == '"')
+                    out += "\\\"";
+                else if (c == '\\')
+                    out += "\\\\";
+                else if (c == '\n')
+                    out += "\\n";
+                else if (c == '\r')
+                    out += "\\r";
+                else if (c == '\t')
+                    out += "\\t";
+                else
+                    out += c;
+            }
+            return out;
+        }
 
-} // namespace detail
+    } // namespace detail
 
-// Converts a simulation TIME value to double for the optional sim_time JSON
-// field. Specialize for types where static_cast<double> is insufficient.
-template <typename T> double to_sim_double(const T &t) noexcept {
-  return static_cast<double>(t);
-}
+    // Converts a simulation TIME value to double for the optional sim_time JSON
+    // field. Specialize for types where static_cast<double> is insufficient.
+    template <typename T> double to_sim_double(const T &t) noexcept {
+        return static_cast<double>(t);
+    }
 
-inline void init() {
-  auto sink = std::make_shared<spdlog::sinks::stdout_sink_mt>();
-  auto log = std::make_shared<spdlog::logger>("cadmium", sink);
-  log->set_pattern("%v");
-  log->set_level(spdlog::level::debug);
-  spdlog::flush_on(spdlog::level::err);
-  detail::instance() = log;
-}
+    inline void init() {
+        auto sink = std::make_shared<spdlog::sinks::stdout_sink_mt>();
+        auto log  = std::make_shared<spdlog::logger>("cadmium", sink);
+        log->set_pattern("%v");
+        log->set_level(spdlog::level::debug);
+        spdlog::flush_on(spdlog::level::err);
+        detail::instance() = log;
+    }
 
-inline void emit(level lvl, std::string_view event, std::string_view msg,
-                 std::optional<double> sim_time = std::nullopt) {
-  auto &log = detail::instance();
-  if (!log)
-    return;
+    inline void emit(level lvl, std::string_view event, std::string_view msg,
+                     std::optional<double> sim_time = std::nullopt) {
+        auto &log = detail::instance();
+        if (!log)
+            return;
 
-  auto now = std::chrono::system_clock::now();
-  auto ts = std::format("{0:%Y-%m-%dT%H:%M:%S}Z",
-                        std::chrono::floor<std::chrono::milliseconds>(now));
+        auto now = std::chrono::system_clock::now();
+        auto ts  = std::format("{0:%Y-%m-%dT%H:%M:%S}Z",
+                               std::chrono::floor<std::chrono::milliseconds>(now));
 
-  std::string line =
-      std::format(R"({{"ts":"{}","level":"{}","event":"{}","msg":"{}"}})", ts,
-                  detail::level_str(lvl), detail::escape_json(event),
-                  detail::escape_json(msg));
+        std::string line = std::format(R"({{"ts":"{}","level":"{}","event":"{}","msg":"{}"}})", ts,
+                                       detail::level_str(lvl), detail::escape_json(event),
+                                       detail::escape_json(msg));
 
-  if (sim_time.has_value()) {
-    line.pop_back();
-    line += std::format(R"(,"sim_time":{:.17g}}})", *sim_time);
-  }
+        if (sim_time.has_value()) {
+            line.pop_back();
+            line += std::format(R"(,"sim_time":{:.17g}}})", *sim_time);
+        }
 
-  log->info(line);
-}
+        log->info(line);
+    }
 
-inline void flush() noexcept {
-  auto &log = detail::instance();
-  if (log)
-    log->flush();
-}
+    inline void flush() noexcept {
+        auto &log = detail::instance();
+        if (log)
+            log->flush();
+    }
 
-inline void log_exception(const std::exception &e, std::string_view event) {
-  emit(level::error, event, e.what());
-  flush();
-}
+    inline void log_exception(const std::exception &e, std::string_view event) {
+        emit(level::error, event, e.what());
+        flush();
+    }
 
 } // namespace cadmium::log

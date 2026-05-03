@@ -1,0 +1,20 @@
+BasedOnStyle: LLVM
+Language: Cpp
+ColumnLimit: 100
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ContinuationIndentWidth: 4
+NamespaceIndentation: All
+SortIncludes: true
+IncludeBlocks: Regroup
+IncludeCategories:
+    - Regex: '^(<|\")cadmium/.*'
+      Priority: 1
+    - Regex: '.*'
+      Priority: 2
+AlignConsecutiveAssignments: Consecutive
+AllowShortFunctionsOnASingleLine: Empty
+BreakBeforeBraces: Attach
+AccessModifierOffset: -2
+SpaceBeforeParens: ControlStatements

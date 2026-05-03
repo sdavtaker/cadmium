@@ -32,33 +32,33 @@
 #include <vector>
 
 namespace cadmium {
-namespace helper {
+    namespace helper {
 
-// Generic tuple for_each function
-template <typename TUPLE, typename FUNC> void for_each(TUPLE &ts, FUNC &&f) {
+        // Generic tuple for_each function
+        template <typename TUPLE, typename FUNC> void for_each(TUPLE &ts, FUNC &&f) {
 
-  auto for_each_fold_expression = [&f](auto &...e) -> void { (f(e), ...); };
-  std::apply(for_each_fold_expression, ts);
-}
+            auto for_each_fold_expression = [&f](auto &...e) -> void { (f(e), ...); };
+            std::apply(for_each_fold_expression, ts);
+        }
 
-std::string join(std::vector<std::string> v) {
-  std::ostringstream oss;
-  oss << "{";
-  auto it = v.begin();
-  if (it != v.end()) {
-    oss << *it;
-    ++it;
-  }
-  while (it != v.end()) {
-    oss << ", ";
-    oss << *it;
-    ++it;
-  }
-  oss << "}";
-  return oss.str();
-}
+        std::string join(std::vector<std::string> v) {
+            std::ostringstream oss;
+            oss << "{";
+            auto it = v.begin();
+            if (it != v.end()) {
+                oss << *it;
+                ++it;
+            }
+            while (it != v.end()) {
+                oss << ", ";
+                oss << *it;
+                ++it;
+            }
+            oss << "}";
+            return oss.str();
+        }
 
-} // namespace helper
+    } // namespace helper
 } // namespace cadmium
 
 #endif // CADMIUM_COMMON_HELPERS_HPP

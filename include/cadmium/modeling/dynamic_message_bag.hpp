@@ -32,9 +32,9 @@
 #include <typeindex>
 
 namespace cadmium {
-namespace dynamic {
-using message_bags = std::map<std::type_index, std::any>;
-}
+    namespace dynamic {
+        using message_bags = std::map<std::type_index, std::any>;
+    }
 } // namespace cadmium
 
 #endif // CADMIUM_DYNAMIC_MESSAGE_BAG_HPP

@@ -24,64 +24,60 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <cadmium/logger/cadmium_log.hpp>
+
 #include <catch2/catch_test_macros.hpp>
+#include <spdlog/sinks/ostream_sink.h>
 #include <sstream>
 
-#include <cadmium/logger/cadmium_log.hpp>
-#include <spdlog/sinks/ostream_sink.h>
-
 namespace {
-std::ostringstream oss;
+    std::ostringstream oss;
 } // namespace
 
 static void setup_test_logger() {
-  oss.str("");
-  auto sink = std::make_shared<spdlog::sinks::ostream_sink_mt>(oss);
-  auto log = std::make_shared<spdlog::logger>("cadmium", sink);
-  log->set_pattern("%v");
-  log->set_level(spdlog::level::debug);
-  cadmium::log::detail::instance() = log;
+    oss.str("");
+    auto sink = std::make_shared<spdlog::sinks::ostream_sink_mt>(oss);
+    auto log  = std::make_shared<spdlog::logger>("cadmium", sink);
+    log->set_pattern("%v");
+    log->set_level(spdlog::level::debug);
+    cadmium::log::detail::instance() = log;
 }
 
-SCENARIO("emit writes a valid NDJSON line when the logger is initialised",
-         "[logger][ndjson]") {
-  GIVEN("a logger writing to an in-memory stream") {
-    setup_test_logger();
-    WHEN("an info event is emitted") {
-      cadmium::log::emit(cadmium::log::level::info, "run_info", "test message");
-      cadmium::log::flush();
-      THEN("the output contains the event name and message") {
-        CHECK(oss.str().find("run_info") != std::string::npos);
-        CHECK(oss.str().find("test message") != std::string::npos);
-      }
+SCENARIO("emit writes a valid NDJSON line when the logger is initialised", "[logger][ndjson]") {
+    GIVEN("a logger writing to an in-memory stream") {
+        setup_test_logger();
+        WHEN("an info event is emitted") {
+            cadmium::log::emit(cadmium::log::level::info, "run_info", "test message");
+            cadmium::log::flush();
+            THEN("the output contains the event name and message") {
+                CHECK(oss.str().find("run_info") != std::string::npos);
+                CHECK(oss.str().find("test message") != std::string::npos);
+            }
+        }
     }
-  }
 }
 
-SCENARIO("emit with sim_time includes the sim_time field in the JSON",
-         "[logger][ndjson]") {
-  GIVEN("a logger writing to an in-memory stream") {
-    setup_test_logger();
-    WHEN("an event with sim_time 1.5 is emitted") {
-      cadmium::log::emit(cadmium::log::level::debug, "sim_state", "s0", 1.5);
-      cadmium::log::flush();
-      THEN("the output contains sim_time") {
-        CHECK(oss.str().find("sim_time") != std::string::npos);
-        CHECK(oss.str().find("sim_state") != std::string::npos);
-      }
+SCENARIO("emit with sim_time includes the sim_time field in the JSON", "[logger][ndjson]") {
+    GIVEN("a logger writing to an in-memory stream") {
+        setup_test_logger();
+        WHEN("an event with sim_time 1.5 is emitted") {
+            cadmium::log::emit(cadmium::log::level::debug, "sim_state", "s0", 1.5);
+            cadmium::log::flush();
+            THEN("the output contains sim_time") {
+                CHECK(oss.str().find("sim_time") != std::string::npos);
+                CHECK(oss.str().find("sim_state") != std::string::npos);
+            }
+        }
     }
-  }
 }
 
-SCENARIO("emit is a no-op when the logger is not initialised",
-         "[logger][noop]") {
-  GIVEN("no logger has been initialised") {
-    cadmium::log::detail::instance() = nullptr;
-    WHEN("an event is emitted") {
-      THEN("no exception is thrown") {
-        CHECK_NOTHROW(
-            cadmium::log::emit(cadmium::log::level::info, "ev", "msg"));
-      }
+SCENARIO("emit is a no-op when the logger is not initialised", "[logger][noop]") {
+    GIVEN("no logger has been initialised") {
+        cadmium::log::detail::instance() = nullptr;
+        WHEN("an event is emitted") {
+            THEN("no exception is thrown") {
+                CHECK_NOTHROW(cadmium::log::emit(cadmium::log::level::info, "ev", "msg"));
+            }
+        }
     }
-  }
 }

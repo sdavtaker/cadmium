@@ -33,61 +33,53 @@
 #include <cadmium/modeling/message_box.hpp>
 
 namespace cadmium::model_checks {
-namespace pdevs {
-template <typename FLOATING_MODEL>
-constexpr void atomic_model_float_time_assert() {
-  static_assert(
-      cadmium::concepts::pdevs::AtomicModel<FLOATING_MODEL, float>,
-      "MODEL does not satisfy the AtomicModel concept: check state_type, "
-      "input_ports, output_ports, port uniqueness, and all five PDEVS "
-      "functions");
-}
+    namespace pdevs {
+        template <typename FLOATING_MODEL> constexpr void atomic_model_float_time_assert() {
+            static_assert(cadmium::concepts::pdevs::AtomicModel<FLOATING_MODEL, float>,
+                          "MODEL does not satisfy the AtomicModel concept: check state_type, "
+                          "input_ports, output_ports, port uniqueness, and all five PDEVS "
+                          "functions");
+        }
 
-template <template <typename> class MODEL>
-constexpr void atomic_model_assert() {
-  atomic_model_float_time_assert<MODEL<float>>();
-}
-} // namespace pdevs
+        template <template <typename> class MODEL> constexpr void atomic_model_assert() {
+            atomic_model_float_time_assert<MODEL<float>>();
+        }
+    } // namespace pdevs
 
-namespace devs {
-template <typename FLOATING_MODEL>
-constexpr void atomic_model_float_time_assert() {
-  using ip = typename FLOATING_MODEL::input_ports;
-  using op = typename FLOATING_MODEL::output_ports;
-  using ip_box = typename make_message_box<ip>::type;
-  using op_box = typename make_message_box<op>::type;
-  static_assert(check_unique_elem_types<ip>::value(),
-                "ambiguous port name in input ports");
-  static_assert(check_unique_elem_types<op>::value(),
-                "ambiguous port name in output ports");
-  static_assert(std::is_same<typename FLOATING_MODEL::state_type,
-                             decltype(FLOATING_MODEL{}.state)>::value,
-                "state is undefined or has the wrong type");
-  static_assert(
-      std::is_same<decltype(std::declval<FLOATING_MODEL>().output()), op_box>(),
-      "Output function does not exist or does not return the right message "
-      "bags");
-  static_assert(
-      std::is_same<decltype(std::declval<FLOATING_MODEL>().external_transition(
-                       0.0, ip_box{})),
-                   void>(),
-      "External transition function undefined");
-  static_assert(std::is_same<decltype(std::declval<FLOATING_MODEL>()
-                                          .internal_transition()),
+    namespace devs {
+        template <typename FLOATING_MODEL> constexpr void atomic_model_float_time_assert() {
+            using ip     = typename FLOATING_MODEL::input_ports;
+            using op     = typename FLOATING_MODEL::output_ports;
+            using ip_box = typename make_message_box<ip>::type;
+            using op_box = typename make_message_box<op>::type;
+            static_assert(check_unique_elem_types<ip>::value(),
+                          "ambiguous port name in input ports");
+            static_assert(check_unique_elem_types<op>::value(),
+                          "ambiguous port name in output ports");
+            static_assert(std::is_same<typename FLOATING_MODEL::state_type,
+                                       decltype(FLOATING_MODEL{}.state)>::value,
+                          "state is undefined or has the wrong type");
+            static_assert(std::is_same<decltype(std::declval<FLOATING_MODEL>().output()), op_box>(),
+                          "Output function does not exist or does not return the right message "
+                          "bags");
+            static_assert(std::is_same<decltype(std::declval<FLOATING_MODEL>().external_transition(
+                                           0.0, ip_box{})),
+                                       void>(),
+                          "External transition function undefined");
+            static_assert(
+                std::is_same<decltype(std::declval<FLOATING_MODEL>().internal_transition()),
                              void>(),
                 "Internal transition function undefined");
-  static_assert(
-      std::is_same<decltype(std::declval<FLOATING_MODEL>().time_advance()),
-                   float>(),
-      "Time advance function does not exist or does not return the right type "
-      "of time");
-}
+            static_assert(
+                std::is_same<decltype(std::declval<FLOATING_MODEL>().time_advance()), float>(),
+                "Time advance function does not exist or does not return the right type "
+                "of time");
+        }
 
-template <template <typename> class MODEL>
-constexpr void atomic_model_assert() {
-  atomic_model_float_time_assert<MODEL<float>>();
-}
-} // namespace devs
+        template <template <typename> class MODEL> constexpr void atomic_model_assert() {
+            atomic_model_float_time_assert<MODEL<float>>();
+        }
+    } // namespace devs
 } // namespace cadmium::model_checks
 
 #endif // CADMIUM_ATOMIC_MODEL_ASSERT_HPP

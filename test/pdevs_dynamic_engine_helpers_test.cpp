@@ -24,51 +24,46 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <catch2/catch_test_macros.hpp>
-#include <typeindex>
-
 #include <cadmium/engine/pdevs_dynamic_engine_helpers.hpp>
 #include <cadmium/modeling/dynamic_message_bag.hpp>
 #include <cadmium/modeling/dynamic_models_helpers.hpp>
 #include <cadmium/modeling/message_bag.hpp>
 #include <cadmium/modeling/ports.hpp>
 
+#include <catch2/catch_test_macros.hpp>
+#include <typeindex>
+
 // Port types must be at namespace scope — local structs cannot be template
 // arguments in C++
 namespace {
-struct eh_test_in_0 : public cadmium::in_port<int> {};
-struct eh_test_in_1 : public cadmium::in_port<double> {};
-using eh_test_input_ports = std::tuple<eh_test_in_0, eh_test_in_1>;
-using eh_input_bags =
-    typename cadmium::make_message_bags<eh_test_input_ports>::type;
+    struct eh_test_in_0 : public cadmium::in_port<int> {};
+    struct eh_test_in_1 : public cadmium::in_port<double> {};
+    using eh_test_input_ports = std::tuple<eh_test_in_0, eh_test_in_1>;
+    using eh_input_bags       = typename cadmium::make_message_bags<eh_test_input_ports>::type;
 } // namespace
 
-SCENARIO("all_bags_empty reports true when no messages are present",
-         "[dynamic][engine_helpers]") {
-  GIVEN("a dynamic message bag created from empty typed bags") {
-    auto empty_box =
-        cadmium::dynamic::modeling::create_empty_message_bags<eh_input_bags>();
-    WHEN("all_bags_empty is evaluated") {
-      THEN("it returns true") {
-        CHECK(
-            cadmium::dynamic::engine::all_bags_empty<eh_input_bags>(empty_box));
-      }
+SCENARIO("all_bags_empty reports true when no messages are present", "[dynamic][engine_helpers]") {
+    GIVEN("a dynamic message bag created from empty typed bags") {
+        auto empty_box = cadmium::dynamic::modeling::create_empty_message_bags<eh_input_bags>();
+        WHEN("all_bags_empty is evaluated") {
+            THEN("it returns true") {
+                CHECK(cadmium::dynamic::engine::all_bags_empty<eh_input_bags>(empty_box));
+            }
+        }
     }
-  }
 }
 
-SCENARIO("all_bags_empty reports false when messages are present",
-         "[dynamic][engine_helpers]") {
-  GIVEN("a dynamic message bag containing int and double messages") {
-    eh_input_bags bs_tuple;
-    cadmium::get_messages<eh_test_in_0>(bs_tuple) = {1, 2};
-    cadmium::get_messages<eh_test_in_1>(bs_tuple) = {1.5, 2.5};
-    cadmium::dynamic::message_bags bs_map;
-    cadmium::dynamic::modeling::fill_map_from_bags(bs_tuple, bs_map);
-    WHEN("all_bags_empty is evaluated") {
-      THEN("it returns false") {
-        CHECK(!cadmium::dynamic::engine::all_bags_empty<eh_input_bags>(bs_map));
-      }
+SCENARIO("all_bags_empty reports false when messages are present", "[dynamic][engine_helpers]") {
+    GIVEN("a dynamic message bag containing int and double messages") {
+        eh_input_bags bs_tuple;
+        cadmium::get_messages<eh_test_in_0>(bs_tuple) = {1, 2};
+        cadmium::get_messages<eh_test_in_1>(bs_tuple) = {1.5, 2.5};
+        cadmium::dynamic::message_bags bs_map;
+        cadmium::dynamic::modeling::fill_map_from_bags(bs_tuple, bs_map);
+        WHEN("all_bags_empty is evaluated") {
+            THEN("it returns false") {
+                CHECK(!cadmium::dynamic::engine::all_bags_empty<eh_input_bags>(bs_map));
+            }
+        }
     }
-  }
 }

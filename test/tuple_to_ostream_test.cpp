@@ -24,33 +24,36 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <cadmium/logger/tuple_to_ostream.hpp>
+
 #include <catch2/catch_test_macros.hpp>
 #include <sstream>
 #include <tuple>
 
-#include <cadmium/logger/tuple_to_ostream.hpp>
-
 using namespace cadmium;
 
 SCENARIO("an empty tuple is streamed to an ostream", "[tuple_to_ostream]") {
-  GIVEN("an empty tuple") {
-    std::tuple<> empty;
-    WHEN("it is streamed to an ostringstream") {
-      std::ostringstream oss;
-      oss << empty;
-      THEN("the output is []") { CHECK(oss.str() == "[]"); }
+    GIVEN("an empty tuple") {
+        std::tuple<> empty;
+        WHEN("it is streamed to an ostringstream") {
+            std::ostringstream oss;
+            oss << empty;
+            THEN("the output is []") {
+                CHECK(oss.str() == "[]");
+            }
+        }
     }
-  }
 }
 
-SCENARIO("a single-element tuple is streamed to an ostream",
-         "[tuple_to_ostream]") {
-  GIVEN("a tuple containing the integer 1") {
-    auto one_int = std::make_tuple(1);
-    WHEN("it is streamed to an ostringstream") {
-      std::ostringstream oss;
-      oss << one_int;
-      THEN("the output is [1]") { CHECK(oss.str() == "[1]"); }
+SCENARIO("a single-element tuple is streamed to an ostream", "[tuple_to_ostream]") {
+    GIVEN("a tuple containing the integer 1") {
+        auto one_int = std::make_tuple(1);
+        WHEN("it is streamed to an ostringstream") {
+            std::ostringstream oss;
+            oss << one_int;
+            THEN("the output is [1]") {
+                CHECK(oss.str() == "[1]");
+            }
+        }
     }
-  }
 }

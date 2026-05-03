@@ -24,75 +24,68 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <cadmium/basic_model/devs/passive.hpp>
+
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <stdexcept>
 
-#include <cadmium/basic_model/devs/passive.hpp>
+template <typename TIME> using floating_passive = cadmium::basic_models::devs::passive<float, TIME>;
+using floating_passive_defs                     = cadmium::basic_models::devs::passive_defs<float>;
 
-template <typename TIME>
-using floating_passive = cadmium::basic_models::devs::passive<float, TIME>;
-using floating_passive_defs = cadmium::basic_models::devs::passive_defs<float>;
-
-SCENARIO("devs passive model satisfies the atomic model concept",
-         "[devs][passive]") {
-  GIVEN("the floating_passive model type") {
-    WHEN("the atomic concept check is evaluated") {
-      THEN("it passes") {
-        CHECK(requires {
-          std::declval<floating_passive<float>>().time_advance();
-        });
-      }
+SCENARIO("devs passive model satisfies the atomic model concept", "[devs][passive]") {
+    GIVEN("the floating_passive model type") {
+        WHEN("the atomic concept check is evaluated") {
+            THEN("it passes") {
+                CHECK(requires { std::declval<floating_passive<float>>().time_advance(); });
+            }
+        }
     }
-  }
 }
 
 SCENARIO("devs passive model can be default-constructed", "[devs][passive]") {
-  GIVEN("no preconditions") {
-    WHEN("a floating_passive is default-constructed") {
-      THEN("no exception is thrown") {
-        CHECK_NOTHROW(floating_passive<float>{});
-      }
+    GIVEN("no preconditions") {
+        WHEN("a floating_passive is default-constructed") {
+            THEN("no exception is thrown") {
+                CHECK_NOTHROW(floating_passive<float>{});
+            }
+        }
     }
-  }
 }
 
-SCENARIO("devs passive model rejects an internal transition",
-         "[devs][passive]") {
-  GIVEN("a default-constructed passive model") {
-    auto p = floating_passive<float>();
-    WHEN("internal_transition is called") {
-      THEN("a logic_error is thrown") {
-        CHECK_THROWS_AS(p.internal_transition(), std::logic_error);
-      }
+SCENARIO("devs passive model rejects an internal transition", "[devs][passive]") {
+    GIVEN("a default-constructed passive model") {
+        auto p = floating_passive<float>();
+        WHEN("internal_transition is called") {
+            THEN("a logic_error is thrown") {
+                CHECK_THROWS_AS(p.internal_transition(), std::logic_error);
+            }
+        }
     }
-  }
 }
 
 SCENARIO("devs passive model rejects an output call", "[devs][passive]") {
-  GIVEN("a default-constructed passive model") {
-    auto p = floating_passive<float>();
-    WHEN("output is called") {
-      THEN("a logic_error is thrown") {
-        CHECK_THROWS_AS(p.output(), std::logic_error);
-      }
+    GIVEN("a default-constructed passive model") {
+        auto p = floating_passive<float>();
+        WHEN("output is called") {
+            THEN("a logic_error is thrown") {
+                CHECK_THROWS_AS(p.output(), std::logic_error);
+            }
+        }
     }
-  }
 }
 
-SCENARIO("devs passive model accepts external input and remains passive",
-         "[devs][passive]") {
-  GIVEN("a passive model with infinite time advance") {
-    auto p = floating_passive<float>();
-    REQUIRE(std::isinf(p.time_advance()));
-    WHEN("an external transition is applied with a message on the input port") {
-      typename cadmium::make_message_box<
-          floating_passive<float>::input_ports>::type input;
-      cadmium::get_message<floating_passive_defs::in>(input).emplace(1);
-      THEN("no exception is thrown and time advance remains infinite") {
-        CHECK_NOTHROW(p.external_transition(5.0, input));
-        CHECK(std::isinf(p.time_advance()));
-      }
+SCENARIO("devs passive model accepts external input and remains passive", "[devs][passive]") {
+    GIVEN("a passive model with infinite time advance") {
+        auto p = floating_passive<float>();
+        REQUIRE(std::isinf(p.time_advance()));
+        WHEN("an external transition is applied with a message on the input port") {
+            typename cadmium::make_message_box<floating_passive<float>::input_ports>::type input;
+            cadmium::get_message<floating_passive_defs::in>(input).emplace(1);
+            THEN("no exception is thrown and time advance remains infinite") {
+                CHECK_NOTHROW(p.external_transition(5.0, input));
+                CHECK(std::isinf(p.time_advance()));
+            }
+        }
     }
-  }
 }

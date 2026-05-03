@@ -24,8 +24,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <catch2/catch_test_macros.hpp>
-
 #include <cadmium/basic_model/pdevs/generator.hpp>
 #include <cadmium/engine/pdevs_dynamic_runner.hpp>
 #include <cadmium/modeling/coupling.hpp>
@@ -33,62 +31,64 @@
 #include <cadmium/modeling/dynamic_coupled.hpp>
 #include <cadmium/modeling/dynamic_model_translator.hpp>
 
+#include <catch2/catch_test_macros.hpp>
+
 namespace {
-struct test_tick {};
+    struct test_tick {};
 
-using out_port = cadmium::basic_models::pdevs::generator_defs<test_tick>::out;
+    using out_port = cadmium::basic_models::pdevs::generator_defs<test_tick>::out;
 
-template <typename TIME>
-using test_tick_generator_base =
-    cadmium::basic_models::pdevs::generator<test_tick, TIME>;
+    template <typename TIME>
+    using test_tick_generator_base = cadmium::basic_models::pdevs::generator<test_tick, TIME>;
 
-template <typename TIME>
-struct test_generator : public test_tick_generator_base<TIME> {
-  float period() const override { return 1.0f; }
-  test_tick output_message() const override { return test_tick{}; }
-};
+    template <typename TIME> struct test_generator : public test_tick_generator_base<TIME> {
+        float period() const override {
+            return 1.0f;
+        }
+        test_tick output_message() const override {
+            return test_tick{};
+        }
+    };
 
-struct coupled_out_port : public cadmium::out_port<test_tick> {};
+    struct coupled_out_port : public cadmium::out_port<test_tick> {};
 
-using iports = std::tuple<>;
-using oports = std::tuple<coupled_out_port>;
-using submodels = cadmium::modeling::models_tuple<test_generator>;
-using eics = std::tuple<>;
-using eocs = std::tuple<
-    cadmium::modeling::EOC<test_generator, out_port, coupled_out_port>>;
-using ics = std::tuple<>;
+    using iports    = std::tuple<>;
+    using oports    = std::tuple<coupled_out_port>;
+    using submodels = cadmium::modeling::models_tuple<test_generator>;
+    using eics      = std::tuple<>;
+    using eocs = std::tuple<cadmium::modeling::EOC<test_generator, out_port, coupled_out_port>>;
+    using ics  = std::tuple<>;
 
-template <typename TIME>
-using coupled_generator =
-    cadmium::modeling::pdevs::coupled_model<TIME, iports, oports, submodels,
-                                            eics, eocs, ics>;
+    template <typename TIME>
+    using coupled_generator =
+        cadmium::modeling::pdevs::coupled_model<TIME, iports, oports, submodels, eics, eocs, ics>;
 
-auto coupled = cadmium::dynamic::translate::make_dynamic_coupled_model<
-    float, coupled_generator>();
+    auto coupled =
+        cadmium::dynamic::translate::make_dynamic_coupled_model<float, coupled_generator>();
 
-auto atomic =
-    cadmium::dynamic::translate::make_dynamic_atomic_model<test_generator,
-                                                           float>();
+    auto atomic = cadmium::dynamic::translate::make_dynamic_atomic_model<test_generator, float>();
 } // namespace
 
-SCENARIO("dynamic runner stops at the requested end time and returns it",
-         "[dynamic][runner]") {
-  GIVEN("a dynamic runner initialised at time 0 over a coupled generator") {
-    cadmium::dynamic::engine::runner<float> r(coupled, 0.0);
-    WHEN("run_until is called with end time 60") {
-      float end = r.run_until(60.0);
-      THEN("the returned time equals 60") { CHECK(end == 60.0f); }
+SCENARIO("dynamic runner stops at the requested end time and returns it", "[dynamic][runner]") {
+    GIVEN("a dynamic runner initialised at time 0 over a coupled generator") {
+        cadmium::dynamic::engine::runner<float> r(coupled, 0.0);
+        WHEN("run_until is called with end time 60") {
+            float end = r.run_until(60.0);
+            THEN("the returned time equals 60") {
+                CHECK(end == 60.0f);
+            }
+        }
     }
-  }
 }
 
-SCENARIO("dynamic runner accepts an atomic model at the top level",
-         "[dynamic][runner]") {
-  GIVEN("a dynamic runner initialised at time 0 directly over an atomic") {
-    cadmium::dynamic::engine::runner<float> r(atomic, 0.0);
-    WHEN("run_until is called with end time 5") {
-      float end = r.run_until(5.0);
-      THEN("the returned time equals 5") { CHECK(end == 5.0f); }
+SCENARIO("dynamic runner accepts an atomic model at the top level", "[dynamic][runner]") {
+    GIVEN("a dynamic runner initialised at time 0 directly over an atomic") {
+        cadmium::dynamic::engine::runner<float> r(atomic, 0.0);
+        WHEN("run_until is called with end time 5") {
+            float end = r.run_until(5.0);
+            THEN("the returned time equals 5") {
+                CHECK(end == 5.0f);
+            }
+        }
     }
-  }
 }

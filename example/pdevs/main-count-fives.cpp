@@ -26,7 +26,6 @@
 
 // counting until 5 and output every 5 seconds.
 
-#include <algorithm>
 #include <cadmium/basic_model/pdevs/accumulator.hpp>
 #include <cadmium/basic_model/pdevs/int_generator_one_sec.hpp>
 #include <cadmium/basic_model/pdevs/reset_generator_five_sec.hpp>
@@ -36,6 +35,8 @@
 #include <cadmium/logger/tuple_to_ostream.hpp>
 #include <cadmium/modeling/coupling.hpp>
 #include <cadmium/modeling/ports.hpp>
+
+#include <algorithm>
 #include <chrono>
 #include <iostream>
 
@@ -55,91 +56,86 @@ using hclock = chrono::high_resolution_clock;
  */
 
 template <typename TIME>
-using test_accumulator = cadmium::basic_models::pdevs::accumulator<int, TIME>;
-using test_accumulator_defs =
-    cadmium::basic_models::pdevs::accumulator_defs<int>;
-using reset_tick =
-    cadmium::basic_models::pdevs::accumulator_defs<int>::reset_tick;
+using test_accumulator      = cadmium::basic_models::pdevs::accumulator<int, TIME>;
+using test_accumulator_defs = cadmium::basic_models::pdevs::accumulator_defs<int>;
+using reset_tick            = cadmium::basic_models::pdevs::accumulator_defs<int>::reset_tick;
 
 using empty_iports = std::tuple<>;
-using empty_eic = std::tuple<>;
-using empty_ic = std::tuple<>;
+using empty_eic    = std::tuple<>;
+using empty_ic     = std::tuple<>;
 
 // 2 generators doing output in 2 ports
-using generators_oports = std::tuple<
-    cadmium::basic_models::pdevs::int_generator_one_sec_defs::out,
-    cadmium::basic_models::pdevs::reset_generator_five_sec_defs::out>;
-using generators_submodels = cadmium::modeling::models_tuple<
-    cadmium::basic_models::pdevs::reset_generator_five_sec,
-    cadmium::basic_models::pdevs::int_generator_one_sec>;
+using generators_oports =
+    std::tuple<cadmium::basic_models::pdevs::int_generator_one_sec_defs::out,
+               cadmium::basic_models::pdevs::reset_generator_five_sec_defs::out>;
+using generators_submodels =
+    cadmium::modeling::models_tuple<cadmium::basic_models::pdevs::reset_generator_five_sec,
+                                    cadmium::basic_models::pdevs::int_generator_one_sec>;
 using generators_eoc = std::tuple<
-    cadmium::modeling::EOC<
-        cadmium::basic_models::pdevs::reset_generator_five_sec,
-        cadmium::basic_models::pdevs::reset_generator_five_sec_defs::out,
-        cadmium::basic_models::pdevs::reset_generator_five_sec_defs::out>,
-    cadmium::modeling::EOC<
-        cadmium::basic_models::pdevs::int_generator_one_sec,
-        cadmium::basic_models::pdevs::int_generator_one_sec_defs::out,
-        cadmium::basic_models::pdevs::int_generator_one_sec_defs::out>>;
+    cadmium::modeling::EOC<cadmium::basic_models::pdevs::reset_generator_five_sec,
+                           cadmium::basic_models::pdevs::reset_generator_five_sec_defs::out,
+                           cadmium::basic_models::pdevs::reset_generator_five_sec_defs::out>,
+    cadmium::modeling::EOC<cadmium::basic_models::pdevs::int_generator_one_sec,
+                           cadmium::basic_models::pdevs::int_generator_one_sec_defs::out,
+                           cadmium::basic_models::pdevs::int_generator_one_sec_defs::out>>;
 
 template <typename TIME>
-using coupled_generators_model = cadmium::modeling::pdevs::coupled_model<
-    TIME, empty_iports, generators_oports, generators_submodels, empty_eic,
-    generators_eoc, empty_ic>;
+using coupled_generators_model =
+    cadmium::modeling::pdevs::coupled_model<TIME, empty_iports, generators_oports,
+                                            generators_submodels, empty_eic, generators_eoc,
+                                            empty_ic>;
 
 // 1 accumulator wrapped in a coupled model
-using accumulator_eic = std::tuple<
-    cadmium::modeling::EIC<test_accumulator_defs::add, test_accumulator,
-                           test_accumulator_defs::add>,
-    cadmium::modeling::EIC<test_accumulator_defs::reset, test_accumulator,
-                           test_accumulator_defs::reset>>;
-using accumulator_eoc = std::tuple<cadmium::modeling::EOC<
-    test_accumulator, test_accumulator_defs::sum, test_accumulator_defs::sum>>;
+using accumulator_eic =
+    std::tuple<cadmium::modeling::EIC<test_accumulator_defs::add, test_accumulator,
+                                      test_accumulator_defs::add>,
+               cadmium::modeling::EIC<test_accumulator_defs::reset, test_accumulator,
+                                      test_accumulator_defs::reset>>;
+using accumulator_eoc =
+    std::tuple<cadmium::modeling::EOC<test_accumulator, test_accumulator_defs::sum,
+                                      test_accumulator_defs::sum>>;
 
 using accumulator_submodels = cadmium::modeling::models_tuple<test_accumulator>;
 
 template <typename TIME>
-using coupled_accumulator_model = cadmium::modeling::pdevs::coupled_model<
-    TIME, typename test_accumulator<TIME>::input_ports,
-    typename test_accumulator<TIME>::output_ports, accumulator_submodels,
-    accumulator_eic, accumulator_eoc, empty_ic>;
+using coupled_accumulator_model =
+    cadmium::modeling::pdevs::coupled_model<TIME, typename test_accumulator<TIME>::input_ports,
+                                            typename test_accumulator<TIME>::output_ports,
+                                            accumulator_submodels, accumulator_eic, accumulator_eoc,
+                                            empty_ic>;
 
 // top model interconnecting the 2 coupled models
 
 using top_outport = test_accumulator_defs::sum;
-using top_oports = std::tuple<top_outport>;
+using top_oports  = std::tuple<top_outport>;
 using top_submodels =
-    cadmium::modeling::models_tuple<coupled_generators_model,
-                                    coupled_accumulator_model>;
+    cadmium::modeling::models_tuple<coupled_generators_model, coupled_accumulator_model>;
 
-using top_eoc =
-    std::tuple<cadmium::modeling::EOC<coupled_accumulator_model,
-                                      test_accumulator_defs::sum, top_outport>>;
+using top_eoc = std::tuple<
+    cadmium::modeling::EOC<coupled_accumulator_model, test_accumulator_defs::sum, top_outport>>;
 using top_ic = std::tuple<
-    cadmium::modeling::IC<
-        coupled_generators_model,
-        cadmium::basic_models::pdevs::int_generator_one_sec_defs::out,
-        coupled_accumulator_model, test_accumulator_defs::add>,
-    cadmium::modeling::IC<
-        coupled_generators_model,
-        cadmium::basic_models::pdevs::reset_generator_five_sec_defs::out,
-        coupled_accumulator_model, test_accumulator_defs::reset>>;
+    cadmium::modeling::IC<coupled_generators_model,
+                          cadmium::basic_models::pdevs::int_generator_one_sec_defs::out,
+                          coupled_accumulator_model, test_accumulator_defs::add>,
+    cadmium::modeling::IC<coupled_generators_model,
+                          cadmium::basic_models::pdevs::reset_generator_five_sec_defs::out,
+                          coupled_accumulator_model, test_accumulator_defs::reset>>;
 
 template <typename TIME>
-using top_model = cadmium::modeling::pdevs::coupled_model<
-    TIME, empty_iports, top_oports, top_submodels, empty_eic, top_eoc, top_ic>;
+using top_model =
+    cadmium::modeling::pdevs::coupled_model<TIME, empty_iports, top_oports, top_submodels,
+                                            empty_eic, top_eoc, top_ic>;
 
 int main() {
-  cadmium::log::init();
-  auto start = hclock::now(); // to measure simulation execution time
+    cadmium::log::init();
+    auto start = hclock::now(); // to measure simulation execution time
 
-  cadmium::engine::runner<float, top_model> r{0.0};
-  r.run_until(100.0);
+    cadmium::engine::runner<float, top_model> r{0.0};
+    r.run_until(100.0);
 
-  auto elapsed =
-      std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(
-          hclock::now() - start)
-          .count();
-  cout << "Simulation took:" << elapsed << "sec" << endl;
-  return 0;
+    auto elapsed = std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(
+                       hclock::now() - start)
+                       .count();
+    cout << "Simulation took:" << elapsed << "sec" << endl;
+    return 0;
 }

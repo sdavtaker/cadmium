@@ -40,38 +40,37 @@
 
 namespace cadmium {
 
-template <typename T> using bag = std::vector<T>;
+    template <typename T> using bag = std::vector<T>;
 
-template <typename PORT> struct message_bag {
-  using port = PORT;
-  using message_type = typename PORT::message_type;
+    template <typename PORT> struct message_bag {
+        using port         = PORT;
+        using message_type = typename PORT::message_type;
 
-  bag<message_type> messages;
+        bag<message_type> messages;
 
-  message_bag() {}
+        message_bag() {}
 
-  message_bag(std::initializer_list<message_type> l) : messages{l} {}
-};
+        message_bag(std::initializer_list<message_type> l) : messages{l} {}
+    };
 
-template <typename... Ps>
-std::tuple<message_bag<Ps>...> make_message_bags_impl(std::tuple<Ps...>) {
-  return std::tuple<message_bag<Ps>...>{};
-}
+    template <typename... Ps>
+    std::tuple<message_bag<Ps>...> make_message_bags_impl(std::tuple<Ps...>) {
+        return std::tuple<message_bag<Ps>...>{};
+    }
 
-template <typename T> struct make_message_bags {
-  using type = decltype(make_message_bags_impl(T{}));
-};
+    template <typename T> struct make_message_bags {
+        using type = decltype(make_message_bags_impl(T{}));
+    };
 
-template <typename PORT, typename T>
-bag<typename message_bag<PORT>::message_type> &get_messages(T &mbs) {
-  return std::get<message_bag<PORT>>(mbs).messages;
-}
+    template <typename PORT, typename T>
+    bag<typename message_bag<PORT>::message_type> &get_messages(T &mbs) {
+        return std::get<message_bag<PORT>>(mbs).messages;
+    }
 
-template <typename PORT, typename T>
-const bag<typename message_bag<PORT>::message_type> &
-get_messages(const T &mbs) {
-  return std::get<message_bag<PORT>>(mbs).messages;
-}
+    template <typename PORT, typename T>
+    const bag<typename message_bag<PORT>::message_type> &get_messages(const T &mbs) {
+        return std::get<message_bag<PORT>>(mbs).messages;
+    }
 
 } // namespace cadmium
 

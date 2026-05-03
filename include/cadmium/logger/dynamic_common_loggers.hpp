@@ -31,30 +31,30 @@
 #include <vector>
 
 namespace cadmium {
-namespace dynamic {
-namespace logger {
+    namespace dynamic {
+        namespace logger {
 
-// Data returned by link::route_messages — carries routing metadata for logging.
-struct routed_messages {
-  std::string from_port;
-  std::string to_port;
-  std::vector<std::string> from_messages;
-  std::vector<std::string> to_messages;
+            // Data returned by link::route_messages — carries routing metadata for logging.
+            struct routed_messages {
+                std::string from_port;
+                std::string to_port;
+                std::vector<std::string> from_messages;
+                std::vector<std::string> to_messages;
 
-  routed_messages() = default;
+                routed_messages() = default;
 
-  routed_messages(std::string from_p, std::string to_p)
-      : from_port(std::move(from_p)), to_port(std::move(to_p)) {}
+                routed_messages(std::string from_p, std::string to_p)
+                    : from_port(std::move(from_p)), to_port(std::move(to_p)) {}
 
-  routed_messages(std::vector<std::string> from_msgs,
-                  std::vector<std::string> to_msgs, std::string from_p,
-                  std::string to_p)
-      : from_port(std::move(from_p)), to_port(std::move(to_p)),
-        from_messages(std::move(from_msgs)), to_messages(std::move(to_msgs)) {}
-};
+                routed_messages(std::vector<std::string> from_msgs,
+                                std::vector<std::string> to_msgs, std::string from_p,
+                                std::string to_p)
+                    : from_port(std::move(from_p)), to_port(std::move(to_p)),
+                      from_messages(std::move(from_msgs)), to_messages(std::move(to_msgs)) {}
+            };
 
-} // namespace logger
-} // namespace dynamic
+        } // namespace logger
+    } // namespace dynamic
 } // namespace cadmium
 
 #endif // CADMIUM_DYNAMIC_COMMON_LOGGERS_HPP

@@ -31,60 +31,62 @@
 #include <type_traits>
 
 namespace cadmium {
-namespace model_checks {
+    namespace model_checks {
 
-namespace { // details — internal linkage, accessible within each TU that
-            // includes this header
+        namespace { // details — internal linkage, accessible within each TU that
+                    // includes this header
 
-template <typename, template <typename...> class>
-struct is_specialization : std::false_type {};
-template <template <typename...> class TEMP, typename... ARGS>
-struct is_specialization<TEMP<ARGS...>, TEMP> : std::true_type {};
+            template <typename, template <typename...> class>
+            struct is_specialization : std::false_type {};
+            template <template <typename...> class TEMP, typename... ARGS>
+            struct is_specialization<TEMP<ARGS...>, TEMP> : std::true_type {};
 
-template <typename T> constexpr bool is_tuple() {
-  return is_specialization<T, std::tuple>::value;
-}
+            template <typename T> constexpr bool is_tuple() {
+                return is_specialization<T, std::tuple>::value;
+            }
 
-template <typename T, int S> struct check_unique_elem_types_impl {
-  static consteval bool value() {
-    using elem = std::tuple_element_t<S - 1, T>;
-    (void)std::get<elem>(T{});
-    return check_unique_elem_types_impl<T, S - 1>::value();
-  }
-};
+            template <typename T, int S> struct check_unique_elem_types_impl {
+                static consteval bool value() {
+                    using elem = std::tuple_element_t<S - 1, T>;
+                    (void)std::get<elem>(T{});
+                    return check_unique_elem_types_impl<T, S - 1>::value();
+                }
+            };
 
-template <typename T> struct check_unique_elem_types_impl<T, 0> {
-  static consteval bool value() { return true; }
-};
+            template <typename T> struct check_unique_elem_types_impl<T, 0> {
+                static consteval bool value() {
+                    return true;
+                }
+            };
 
-template <typename T> struct check_unique_elem_types {
-  static consteval bool value() {
-    return check_unique_elem_types_impl<T, std::tuple_size_v<T>>::value();
-  }
-};
+            template <typename T> struct check_unique_elem_types {
+                static consteval bool value() {
+                    return check_unique_elem_types_impl<T, std::tuple_size_v<T>>::value();
+                }
+            };
 
-template <typename PORT, typename TUPLE, int S> struct has_port_in_tuple_impl {
-  static consteval bool value() {
-    if (std::is_same_v<PORT, std::tuple_element_t<S - 1, TUPLE>>)
-      return true;
-    return has_port_in_tuple_impl<PORT, TUPLE, S - 1>::value();
-  }
-};
+            template <typename PORT, typename TUPLE, int S> struct has_port_in_tuple_impl {
+                static consteval bool value() {
+                    if (std::is_same_v<PORT, std::tuple_element_t<S - 1, TUPLE>>)
+                        return true;
+                    return has_port_in_tuple_impl<PORT, TUPLE, S - 1>::value();
+                }
+            };
 
-template <typename PORT, typename TUPLE>
-struct has_port_in_tuple_impl<PORT, TUPLE, 0> {
-  static consteval bool value() { return false; }
-};
+            template <typename PORT, typename TUPLE> struct has_port_in_tuple_impl<PORT, TUPLE, 0> {
+                static consteval bool value() {
+                    return false;
+                }
+            };
 
-template <typename PORT, typename TUPLE> struct has_port_in_tuple {
-  static consteval bool value() {
-    return has_port_in_tuple_impl<PORT, TUPLE,
-                                  std::tuple_size_v<TUPLE>>::value();
-  }
-};
+            template <typename PORT, typename TUPLE> struct has_port_in_tuple {
+                static consteval bool value() {
+                    return has_port_in_tuple_impl<PORT, TUPLE, std::tuple_size_v<TUPLE>>::value();
+                }
+            };
 
-} // anonymous namespace
-} // namespace model_checks
+        } // anonymous namespace
+    } // namespace model_checks
 } // namespace cadmium
 
 #endif // CADMIUM_HELPERS_HPP

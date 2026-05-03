@@ -24,70 +24,67 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <cadmium/modeling/dynamic_models_helpers.hpp>
+#include <cadmium/modeling/message_bag.hpp>
+#include <cadmium/modeling/ports.hpp>
+
 #include <any>
 #include <catch2/catch_test_macros.hpp>
 #include <map>
 #include <typeindex>
 
-#include <cadmium/modeling/dynamic_models_helpers.hpp>
-#include <cadmium/modeling/message_bag.hpp>
-#include <cadmium/modeling/ports.hpp>
-
 // Port types must be at namespace scope — local structs cannot be template
 // arguments in C++
 namespace {
-struct ah_test_in_0 : public cadmium::in_port<int> {};
-struct ah_test_in_1 : public cadmium::in_port<double> {};
-using ah_test_input_ports = std::tuple<ah_test_in_0, ah_test_in_1>;
-using ah_input_bags =
-    typename cadmium::make_message_bags<ah_test_input_ports>::type;
+    struct ah_test_in_0 : public cadmium::in_port<int> {};
+    struct ah_test_in_1 : public cadmium::in_port<double> {};
+    using ah_test_input_ports = std::tuple<ah_test_in_0, ah_test_in_1>;
+    using ah_input_bags       = typename cadmium::make_message_bags<ah_test_input_ports>::type;
 } // namespace
 
 SCENARIO("fill_bags_from_map moves messages from a type-indexed map into a "
          "typed bag tuple",
          "[dynamic][helpers]") {
-  GIVEN("a type-indexed map with two bags containing int and double messages") {
-    cadmium::message_bag<ah_test_in_0> bag_0;
-    cadmium::message_bag<ah_test_in_1> bag_1;
-    bag_0.messages = {1, 2};
-    bag_1.messages = {1.5, 2.5};
-    std::map<std::type_index, std::any> bs_map;
-    bs_map[typeid(ah_test_in_0)] = bag_0;
-    bs_map[typeid(ah_test_in_1)] = bag_1;
-    WHEN("fill_bags_from_map is called") {
-      ah_input_bags bs_tuple;
-      cadmium::dynamic::modeling::fill_bags_from_map<ah_input_bags>(bs_map,
-                                                                    bs_tuple);
-      THEN("each typed bag in the tuple has the same message count as the "
-           "source") {
-        CHECK(cadmium::get_messages<ah_test_in_0>(bs_tuple).size() ==
-              bag_0.messages.size());
-        CHECK(cadmium::get_messages<ah_test_in_1>(bs_tuple).size() ==
-              bag_1.messages.size());
-      }
+    GIVEN("a type-indexed map with two bags containing int and double messages") {
+        cadmium::message_bag<ah_test_in_0> bag_0;
+        cadmium::message_bag<ah_test_in_1> bag_1;
+        bag_0.messages = {1, 2};
+        bag_1.messages = {1.5, 2.5};
+        std::map<std::type_index, std::any> bs_map;
+        bs_map[typeid(ah_test_in_0)] = bag_0;
+        bs_map[typeid(ah_test_in_1)] = bag_1;
+        WHEN("fill_bags_from_map is called") {
+            ah_input_bags bs_tuple;
+            cadmium::dynamic::modeling::fill_bags_from_map<ah_input_bags>(bs_map, bs_tuple);
+            THEN("each typed bag in the tuple has the same message count as the "
+                 "source") {
+                CHECK(cadmium::get_messages<ah_test_in_0>(bs_tuple).size() ==
+                      bag_0.messages.size());
+                CHECK(cadmium::get_messages<ah_test_in_1>(bs_tuple).size() ==
+                      bag_1.messages.size());
+            }
+        }
     }
-  }
 }
 
 SCENARIO("fill_map_from_bags moves messages from a typed bag tuple into a "
          "type-indexed map",
          "[dynamic][helpers]") {
-  GIVEN("a typed bag tuple with int and double messages") {
-    ah_input_bags bs_tuple;
-    cadmium::get_messages<ah_test_in_0>(bs_tuple) = {1, 2};
-    cadmium::get_messages<ah_test_in_1>(bs_tuple) = {1.5, 2.5};
-    WHEN("fill_map_from_bags is called") {
-      std::map<std::type_index, std::any> bs_map;
-      cadmium::dynamic::modeling::fill_map_from_bags<ah_input_bags>(bs_tuple,
-                                                                    bs_map);
-      THEN("each entry in the map contains two messages") {
-        auto map_bag_0 = std::any_cast<cadmium::message_bag<ah_test_in_0>>(
-            bs_map.at(typeid(ah_test_in_0)));
-        auto map_bag_1 = std::any_cast<cadmium::message_bag<ah_test_in_1>>(
-            bs_map.at(typeid(ah_test_in_1)));
-        CHECK(map_bag_0.messages.size() == 2);
-        CHECK(map_bag_1.messages.size() == 2);
-      }
+    GIVEN("a typed bag tuple with int and double messages") {
+        ah_input_bags bs_tuple;
+        cadmium::get_messages<ah_test_in_0>(bs_tuple) = {1, 2};
+        cadmium::get_messages<ah_test_in_1>(bs_tuple) = {1.5, 2.5};
+        WHEN("fill_map_from_bags is called") {
+            std::map<std::type_index, std::any> bs_map;
+            cadmium::dynamic::modeling::fill_map_from_bags<ah_input_bags>(bs_tuple, bs_map);
+            THEN("each entry in the map contains two messages") {
+                auto map_bag_0 = std::any_cast<cadmium::message_bag<ah_test_in_0>>(
+                    bs_map.at(typeid(ah_test_in_0)));
+                auto map_bag_1 = std::any_cast<cadmium::message_bag<ah_test_in_1>>(
+                    bs_map.at(typeid(ah_test_in_1)));
+                CHECK(map_bag_0.messages.size() == 2);
+                CHECK(map_bag_1.messages.size() == 2);
+            }
+        }
     }
-  }
 }
