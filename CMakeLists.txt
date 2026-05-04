@@ -30,15 +30,18 @@ target_compile_options(cadmium INTERFACE -Wall -Wextra -pedantic)
 target_link_libraries(cadmium INTERFACE spdlog::spdlog)
 
 # ----------------------------------------------------------------------------
-# Examples (pdevs only)
+# Examples
 # ----------------------------------------------------------------------------
 
 option(CADMIUM_BUILD_EXAMPLES "Build examples" ON)
 if(CADMIUM_BUILD_EXAMPLES)
-    add_executable(main-clock  example/pdevs/main-clock.cpp)
-    add_executable(main-count-fives example/pdevs/main-count-fives.cpp)
-    target_link_libraries(main-clock        PRIVATE cadmium)
-    target_link_libraries(main-count-fives  PRIVATE cadmium)
+    add_executable(main-clock             example/pdevs/main-clock.cpp)
+    add_executable(main-count-fives       example/pdevs/main-count-fives.cpp)
+    add_executable(devs-main-clock        example/devs/main-clock.cpp)
+    add_executable(devs-main-count-fives  example/devs/main-count-fives.cpp)
+    foreach(tgt main-clock main-count-fives devs-main-clock devs-main-count-fives)
+        target_link_libraries(${tgt} PRIVATE cadmium)
+    endforeach()
 endif()
 
 # ----------------------------------------------------------------------------
@@ -137,6 +140,7 @@ if(CLANG_FORMAT)
         "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/test/*.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/example/pdevs/*.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/example/devs/*.cpp"
     )
     add_custom_target(format
         COMMAND ${CLANG_FORMAT} -i ${ALL_SOURCE_FILES}
