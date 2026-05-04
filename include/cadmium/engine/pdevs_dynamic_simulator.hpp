@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 /**
  * Copyright (c) 2017-present, Laouen M. L. Belloli, Damian Vicino
  * Carleton University, Universidad de Buenos Aires, Universite de Nice-Sophia

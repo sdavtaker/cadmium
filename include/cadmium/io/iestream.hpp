@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 /**
  * Copyright (c) 2017-present, Cristina Ruiz Martin, Laouen Mayal Louan Belloli
  * Carleton University, Universidad de Valladolid
