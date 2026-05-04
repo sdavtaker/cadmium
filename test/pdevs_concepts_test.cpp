@@ -37,6 +37,7 @@
 #include <cadmium/basic_model/pdevs/accumulator.hpp>
 #include <cadmium/basic_model/pdevs/generator.hpp>
 #include <cadmium/basic_model/pdevs/passive.hpp>
+#include <cadmium/concepts/devs_concepts.hpp>
 #include <cadmium/concepts/pdevs_concepts.hpp>
 #include <cadmium/modeling/coupling.hpp>
 #include <cadmium/modeling/message_bag.hpp>

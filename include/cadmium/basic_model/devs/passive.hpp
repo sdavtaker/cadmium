@@ -36,10 +36,10 @@
 namespace cadmium::basic_models::devs {
 
     /**
-     * @brief Passive PDEVS Model receives messages of a particular type and never
+     * @brief Passive DEVS Model receives messages of a particular type and never
      * outputs.
      *
-     * Passive PDEVS Model:
+     * Passive DEVS Model:
      * - X = any (of particular type in implementation)
      * - Y = void
      * - In_Ports: in
@@ -47,7 +47,6 @@ namespace cadmium::basic_models::devs {
      * - S = {}
      * - internal( ., .) = ERROR
      * - external( ., ., .) = {}
-     * - confluence( ., ., .) = ERROR
      * - output (.) = ERROR
      * - time_advance(.) = infinite
      */

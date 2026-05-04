@@ -29,7 +29,6 @@
 #include <cadmium/basic_model/pdevs/accumulator.hpp>
 #include <cadmium/basic_model/pdevs/int_generator_one_sec.hpp>
 #include <cadmium/basic_model/pdevs/reset_generator_five_sec.hpp>
-#include <cadmium/concepts/coupled_model_assert.hpp>
 #include <cadmium/engine/pdevs_runner.hpp>
 #include <cadmium/logger/cadmium_log.hpp>
 #include <cadmium/logger/tuple_to_ostream.hpp>

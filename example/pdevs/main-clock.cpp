@@ -24,10 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-// This file will include the clock example
-
 #include <cadmium/basic_model/pdevs/generator.hpp>
-#include <cadmium/concepts/coupled_model_assert.hpp>
 #include <cadmium/engine/pdevs_runner.hpp>
 #include <cadmium/modeling/coupling.hpp>
 #include <cadmium/modeling/ports.hpp>

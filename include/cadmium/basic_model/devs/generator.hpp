@@ -36,9 +36,9 @@
 namespace cadmium::basic_models::devs {
 
     /**
-     * @brief Generator PDEVS Model
+     * @brief Generator DEVS Model
      *
-     * Generator PDEVS Model(period, outvalue):
+     * Generator DEVS Model(period, outvalue):
      * - X = {}
      * - Y = {outvalue}
      * - S = {passive, active} x Multiples(period)

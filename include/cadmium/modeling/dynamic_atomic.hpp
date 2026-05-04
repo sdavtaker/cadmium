@@ -27,7 +27,6 @@
 #ifndef CADMIUM_DYNAMIC_ATOMIC_HPP
 #define CADMIUM_DYNAMIC_ATOMIC_HPP
 
-#include <cadmium/concepts/atomic_model_assert.hpp>
 #include <cadmium/concepts/pdevs_concepts.hpp>
 #include <cadmium/modeling/dynamic_message_bag.hpp>
 #include <cadmium/modeling/dynamic_model.hpp>
@@ -76,7 +75,6 @@ namespace cadmium {
                 atomic() {
                     static_assert(cadmium::concepts::pdevs::AtomicModel<ATOMIC<TIME>, TIME>,
                                   "This is not an atomic model");
-                    cadmium::model_checks::pdevs::atomic_model_assert<ATOMIC>();
                     _id          = typeid(model_type).name();
                     _input_ports = cadmium::dynamic::modeling::create_dynamic_ports<input_ports>();
                     _output_ports =
@@ -87,7 +85,6 @@ namespace cadmium {
                     : ATOMIC<TIME>(std::forward<Args>(args)...) {
                     static_assert(cadmium::concepts::pdevs::AtomicModel<ATOMIC<TIME>, TIME>,
                                   "This is not an atomic model");
-                    cadmium::model_checks::pdevs::atomic_model_assert<ATOMIC>();
                     _id          = model_id;
                     _input_ports = cadmium::dynamic::modeling::create_dynamic_ports<input_ports>();
                     _output_ports =
