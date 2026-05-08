@@ -112,6 +112,10 @@ namespace cadmium {
                     _inbox = std::move(in);
                 }
 
+                bool inbox_empty() const noexcept {
+                    return all_box_empty(_inbox);
+                }
+
                 template <typename PORT>
                 const std::optional<typename PORT::message_type> &outbox_port() const noexcept {
                     return cadmium::get_message<PORT>(_outbox);

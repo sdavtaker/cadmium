@@ -70,7 +70,8 @@ if(CADMIUM_BUILD_TESTS)
 
     # Batch 3: devs static engine
     foreach(test_name
-            devs_simulator_test)
+            devs_simulator_test
+            devs_coordinator_test)
         add_executable(${test_name} test/${test_name}.cpp)
         target_link_libraries(${test_name} PRIVATE cadmium Catch2::Catch2WithMain)
         add_test(NAME ${test_name} COMMAND ${test_name})

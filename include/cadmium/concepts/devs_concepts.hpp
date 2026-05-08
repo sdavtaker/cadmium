@@ -62,6 +62,88 @@ namespace cadmium::concepts {
                 { m.time_advance() } -> std::same_as<TIME>;
             };
 
+        // ── CoupledModel ─────────────────────────────────────────────────────────
+
+        template <typename E>
+        concept EICEntry = requires {
+            typename E::external_input_port;
+            typename E::submodel_input_port;
+            requires InputPort<typename E::external_input_port>;
+            requires InputPort<typename E::submodel_input_port>;
+            requires std::same_as<typename E::external_input_port::message_type,
+                                  typename E::submodel_input_port::message_type>;
+            requires detail::port_in_tuple_v<typename E::submodel_input_port,
+                                             typename E::template submodel<float>::input_ports>;
+        };
+
+        template <typename E>
+        concept EOCEntry = requires {
+            typename E::external_output_port;
+            typename E::submodel_output_port;
+            requires OutputPort<typename E::external_output_port>;
+            requires OutputPort<typename E::submodel_output_port>;
+            requires std::same_as<typename E::external_output_port::message_type,
+                                  typename E::submodel_output_port::message_type>;
+            requires detail::port_in_tuple_v<typename E::submodel_output_port,
+                                             typename E::template submodel<float>::output_ports>;
+        };
+
+        template <typename E>
+        concept ICEntry = requires {
+            typename E::from_model_output_port;
+            typename E::to_model_input_port;
+            requires OutputPort<typename E::from_model_output_port>;
+            requires InputPort<typename E::to_model_input_port>;
+            requires std::same_as<typename E::from_model_output_port::message_type,
+                                  typename E::to_model_input_port::message_type>;
+            requires detail::port_in_tuple_v<typename E::from_model_output_port,
+                                             typename E::template from_model<float>::output_ports>;
+            requires detail::port_in_tuple_v<typename E::to_model_input_port,
+                                             typename E::template to_model<float>::input_ports>;
+            requires !std::same_as<typename E::template from_model<float>,
+                                   typename E::template to_model<float>>;
+        };
+
+        template <typename Tuple> struct all_eic_entries_impl : std::false_type {};
+        template <typename... Ts>
+        struct all_eic_entries_impl<std::tuple<Ts...>> : std::bool_constant<(EICEntry<Ts> && ...)> {
+        };
+        template <typename Tuple>
+        inline constexpr bool all_eic_entries_v = all_eic_entries_impl<Tuple>::value;
+
+        template <typename Tuple> struct all_eoc_entries_impl : std::false_type {};
+        template <typename... Ts>
+        struct all_eoc_entries_impl<std::tuple<Ts...>> : std::bool_constant<(EOCEntry<Ts> && ...)> {
+        };
+        template <typename Tuple>
+        inline constexpr bool all_eoc_entries_v = all_eoc_entries_impl<Tuple>::value;
+
+        template <typename Tuple> struct all_ic_entries_impl : std::false_type {};
+        template <typename... Ts>
+        struct all_ic_entries_impl<std::tuple<Ts...>> : std::bool_constant<(ICEntry<Ts> && ...)> {};
+        template <typename Tuple>
+        inline constexpr bool all_ic_entries_v = all_ic_entries_impl<Tuple>::value;
+
+        /**
+         * CoupledModel<M> — satisfied when M declares all structural members the
+         * Classic DEVS coordinator expects, including a SELECT type.
+         */
+        template <typename M>
+        concept CoupledModel = requires {
+            typename M::input_ports;
+            typename M::output_ports;
+            typename M::external_input_couplings;
+            typename M::external_output_couplings;
+            typename M::internal_couplings;
+            typename M::select;
+            typename M::template models<float>;
+            requires detail::all_unique_types_v<typename M::input_ports>;
+            requires detail::all_unique_types_v<typename M::output_ports>;
+            requires all_eic_entries_v<typename M::external_input_couplings>;
+            requires all_eoc_entries_v<typename M::external_output_couplings>;
+            requires all_ic_entries_v<typename M::internal_couplings>;
+        };
+
     } // namespace devs
 
 } // namespace cadmium::concepts
