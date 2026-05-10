@@ -89,7 +89,7 @@ namespace cadmium::basic_models::devs {
             std::get<on_reset>(state) = false;
         }
 
-        void external_transition(TIME e, typename make_message_box<input_ports>::type mb) {
+        void external_transition(TIME, typename make_message_box<input_ports>::type mb) {
             if (std::get<on_reset>(state)) {
                 throw std::logic_error("External transition called while on reset state");
             }
