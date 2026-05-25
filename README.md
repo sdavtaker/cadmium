@@ -1,4 +1,4 @@
-# cadmium [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
+# cadmium [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/sdavtaker/cadmium/badge)](https://scorecard.dev/viewer/?uri=github.com/sdavtaker/cadmium)
 
 This is **sdavtaker's fork** of [SimulationEverywhere/cadmium](https://github.com/SimulationEverywhere/cadmium),
 modernized to C++23 for use in the VDW14/VDW16/VWT19 time-representation experiments.
