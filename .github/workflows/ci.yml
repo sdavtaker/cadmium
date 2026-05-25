@@ -6,6 +6,8 @@ on:
   pull_request:
     branches: [main]
 
+permissions: read-all
+
 jobs:
   build-and-test:
     runs-on: ubuntu-24.04
@@ -14,7 +16,7 @@ jobs:
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Install GCC 14
         run: |
@@ -29,7 +31,7 @@ jobs:
           $VCPKG_ROOT/bootstrap-vcpkg.sh -disableMetrics
 
       - name: Cache vcpkg packages
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ${{ github.workspace }}/vcpkg/installed
           key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
@@ -79,7 +81,7 @@ jobs:
           echo "All output validation checks passed."
 
       - name: Upload example output
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: example-output
           path: example-output/
