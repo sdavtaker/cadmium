@@ -26,16 +26,19 @@ jobs:
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
 
       - name: Set up vcpkg
+        env:
+          VCPKG_COMMIT: 67b207f199b5d2ee09f206d2e9e9171e7c7a3274
         run: |
           git clone https://github.com/microsoft/vcpkg.git $VCPKG_ROOT
+          git -C $VCPKG_ROOT checkout $VCPKG_COMMIT
           $VCPKG_ROOT/bootstrap-vcpkg.sh -disableMetrics
 
       - name: Cache vcpkg packages
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ${{ github.workspace }}/vcpkg/installed
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
-          restore-keys: vcpkg-${{ runner.os }}-
+          key: vcpkg-${{ runner.os }}-67b207f199-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-${{ runner.os }}-67b207f199-
 
       - name: Configure
         run: |
