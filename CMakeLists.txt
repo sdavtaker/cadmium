@@ -1,15 +1,14 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(cadmium VERSION 0.3.0 LANGUAGES CXX)
-
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
+# Toolchain must be set before project() so CMake loads vcpkg during compiler detection.
 if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
         CACHE STRING "")
 endif()
+
+project(cadmium VERSION 0.3.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 # ----------------------------------------------------------------------------
 # cadmium INTERFACE library
@@ -26,14 +25,17 @@ target_include_directories(cadmium INTERFACE
 )
 
 target_compile_features(cadmium INTERFACE cxx_std_23)
-target_compile_options(cadmium INTERFACE -Wall -Wextra -pedantic)
+# Warnings apply only when building from source tree, not when installed via vcpkg.
+target_compile_options(cadmium INTERFACE
+    $<BUILD_INTERFACE:-Wall -Wextra -pedantic>
+)
 target_link_libraries(cadmium INTERFACE spdlog::spdlog)
 
 # ----------------------------------------------------------------------------
 # Examples
 # ----------------------------------------------------------------------------
 
-option(CADMIUM_BUILD_EXAMPLES "Build examples" ON)
+option(CADMIUM_BUILD_EXAMPLES "Build examples" ${PROJECT_IS_TOP_LEVEL})
 if(CADMIUM_BUILD_EXAMPLES)
     add_executable(main-clock             example/pdevs/main-clock.cpp)
     add_executable(main-count-fives       example/pdevs/main-count-fives.cpp)
@@ -48,7 +50,7 @@ endif()
 # Tests (wired per batch in later migration steps)
 # ----------------------------------------------------------------------------
 
-option(CADMIUM_BUILD_TESTS "Build tests" OFF)
+option(CADMIUM_BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
 if(CADMIUM_BUILD_TESTS)
     find_package(Catch2 CONFIG REQUIRED)
     enable_testing()
@@ -147,6 +149,7 @@ install(
 find_program(CLANG_FORMAT clang-format)
 if(CLANG_FORMAT)
     file(GLOB_RECURSE ALL_SOURCE_FILES
+        CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/test/*.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/example/pdevs/*.cpp"
