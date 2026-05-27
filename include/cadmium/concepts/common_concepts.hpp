@@ -79,14 +79,13 @@ namespace cadmium::concepts {
     // ─── Time concept ────────────────────────────────────────────────────────────
 
     template <typename T>
-    concept Time = std::totally_ordered<T> && std::regular<T> &&
-                   requires(T a, T b) {
-                       { a + b } -> std::same_as<T>;
-                       { a - b } -> std::same_as<T>;
-                   } &&
-                   requires {
-                       { std::numeric_limits<T>::infinity() } -> std::convertible_to<T>;
-                   };
+    concept Time = std::totally_ordered<T> && std::regular<T> && requires(T a, T b) {
+        { a + b } -> std::same_as<T>;
+        { a - b } -> std::same_as<T>;
+    } && requires {
+        requires std::numeric_limits<T>::has_infinity;
+        { std::numeric_limits<T>::infinity() } -> std::convertible_to<T>;
+    };
 
 } // namespace cadmium::concepts
 
