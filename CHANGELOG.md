@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-06-04
+
+### Fixed
+- CMake install configuration now generates a proper `cadmiumConfig.cmake` using
+  `configure_package_config_file` with `find_dependency(spdlog)`, so
+  `find_package(cadmium)` works correctly after vcpkg installation without
+  consumers needing to separately find spdlog.
+- `write_basic_package_version_file` compatibility changed to `SameMinorVersion`
+  (was `AnyNewerVersion`), matching pre-1.0 SemVer semantics.
+
 ## [0.3.0] - 2026-05-02
 
 C++23 modernization fork — stripped to a clean PDEVS engine, Boost removed,
@@ -39,6 +49,7 @@ structured logging added.
 
 Last upstream release from SimulationEverywhere/cadmium before this fork.
 
-[Unreleased]: https://github.com/sdavtaker/cadmium/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/sdavtaker/cadmium/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/sdavtaker/cadmium/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/sdavtaker/cadmium/compare/v0.2.9...v0.3.0
 [0.2.9]: https://github.com/sdavtaker/cadmium/releases/tag/v0.2.9

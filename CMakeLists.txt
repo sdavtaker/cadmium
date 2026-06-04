@@ -6,9 +6,11 @@ if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
         CACHE STRING "")
 endif()
 
-project(cadmium VERSION 0.3.0 LANGUAGES CXX)
+project(cadmium VERSION 0.3.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+include(GNUInstallDirs)
 
 # ----------------------------------------------------------------------------
 # cadmium INTERFACE library
@@ -21,7 +23,6 @@ add_library(cadmium::cadmium ALIAS cadmium)
 
 target_include_directories(cadmium INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 target_compile_features(cadmium INTERFACE cxx_std_23)
@@ -114,31 +115,43 @@ endif()
 # Install
 # ----------------------------------------------------------------------------
 
-include(GNUInstallDirs)
 
 install(
     DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/cadmium/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cadmium
 )
 
-include(CMakePackageConfigHelpers)
-
-install(TARGETS cadmium EXPORT cadmium)
-
-install(EXPORT cadmium
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/cadmium"
-    NAMESPACE cadmium::
-    FILE cadmiumConfig.cmake
-)
-
-write_basic_package_version_file(
-    ${CMAKE_BINARY_DIR}/cadmiumConfigVersion.cmake
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY AnyNewerVersion
+install(
+    TARGETS cadmium
+    EXPORT cadmiumTargets
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
 install(
-    FILES ${CMAKE_BINARY_DIR}/cadmiumConfigVersion.cmake
+    EXPORT cadmiumTargets
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/cadmium"
+    NAMESPACE cadmium::
+    FILE cadmiumTargets.cmake
+)
+
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cadmiumConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/cadmiumConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cadmium
+)
+
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/cadmiumConfigVersion.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMinorVersion
+)
+
+install(
+    FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/cadmiumConfig.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/cadmiumConfigVersion.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cadmium
 )
 
