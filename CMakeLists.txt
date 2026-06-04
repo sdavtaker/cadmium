@@ -10,6 +10,8 @@ project(cadmium VERSION 0.3.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+include(GNUInstallDirs)
+
 # ----------------------------------------------------------------------------
 # cadmium INTERFACE library
 # ----------------------------------------------------------------------------
@@ -21,7 +23,6 @@ add_library(cadmium::cadmium ALIAS cadmium)
 
 target_include_directories(cadmium INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 target_compile_features(cadmium INTERFACE cxx_std_23)
@@ -114,7 +115,6 @@ endif()
 # Install
 # ----------------------------------------------------------------------------
 
-include(GNUInstallDirs)
 
 install(
     DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/cadmium/
