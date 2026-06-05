@@ -1,0 +1,64 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '23 6 * * 1'
+
+permissions: {}
+
+jobs:
+  analyze:
+    name: Analyze (C++)
+    runs-on: ubuntu-24.04
+    permissions:
+      security-events: write
+      contents: read
+
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_COMMIT: 67b207f199b5d2ee09f206d2e9e9171e7c7a3274
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@051e2f90686233507fe9283ff167d2e709304b30 # v3.36.0
+        with:
+          languages: c-cpp
+
+      - name: Install GCC 14
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-14 g++-14
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
+
+      - name: Set up vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git $VCPKG_ROOT
+          git -C $VCPKG_ROOT checkout ${{ env.VCPKG_COMMIT }}
+          $VCPKG_ROOT/bootstrap-vcpkg.sh -disableMetrics
+
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=g++-14 \
+            -DCADMIUM_BUILD_TESTS=ON \
+            -DCADMIUM_BUILD_EXAMPLES=ON \
+            -DCADMIUM_BUILD_COMPILE_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@051e2f90686233507fe9283ff167d2e709304b30 # v3.36.0
+        with:
+          category: "/language:c-cpp"
