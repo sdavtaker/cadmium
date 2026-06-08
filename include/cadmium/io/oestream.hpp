@@ -34,11 +34,8 @@
 #include <fstream>
 #include <limits>
 #include <stddef.h>
+#include <stdexcept>
 #include <string>
-
-using namespace std;
-
-using namespace cadmium;
 
 /**
  * @brief output_event_stream PDEVS Model.
@@ -52,55 +49,47 @@ template <typename MSG, typename TIME, typename PORT_TYPE> class oestream_output
     using defs = PORT_TYPE;
 
   public:
-    // default constructor
     oestream_output() noexcept {}
-    oestream_output(const char *file_path) noexcept {
+    explicit oestream_output(const char *file_path) {
         state.path = file_path;
         state.file.open(state.path);
+        if (!state.file.is_open())
+            throw std::runtime_error(std::string("oestream: failed to open file: ") + file_path);
         state.currentTime = TIME("00:00:00");
     }
 
-    // state definition
     struct state_type {
-        const char *path;
-        ofstream file;
-        bool prop;
-        TIME currentTime;
+        const char *path = nullptr;
+        std::ofstream file;
+        bool prop        = false;
+        TIME currentTime = TIME();
     };
     state_type state;
 
-    // ports definition
     using input_ports  = std::tuple<typename defs::in>;
     using output_ports = std::tuple<>;
 
-    // internal transition
     void internal_transition() {}
 
-    // external transition
-    void external_transition(TIME e, typename make_message_bags<input_ports>::type mbs) {
+    void external_transition(TIME e, typename cadmium::make_message_bags<input_ports>::type mbs) {
         state.currentTime += e;
-        for (const auto &x : get_messages<typename defs::in>(mbs)) {
+        for (const auto &x : cadmium::get_messages<typename defs::in>(mbs))
             state.file << state.currentTime << " " << x << "\n";
-        }
     }
 
-    // confluence transition
-    void confluence_transition(TIME e, typename make_message_bags<input_ports>::type mbs) {}
+    void confluence_transition(TIME, typename cadmium::make_message_bags<input_ports>::type) {}
 
-    // output function
-    typename make_message_bags<output_ports>::type output() const {
-        typename make_message_bags<output_ports>::type bags;
-        return bags;
+    typename cadmium::make_message_bags<output_ports>::type output() const {
+        return typename cadmium::make_message_bags<output_ports>::type{};
     }
 
-    // time_advance function
     TIME time_advance() const {
         return std::numeric_limits<TIME>::infinity();
     }
 
     friend std::ostringstream &
     operator<<(std::ostringstream &os,
-               const typename oestream_output<MSG, TIME, PORT_TYPE>::state_type &i) {
+               const typename oestream_output<MSG, TIME, PORT_TYPE>::state_type &) {
         os << "";
         return os;
     }
