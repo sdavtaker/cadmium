@@ -56,10 +56,14 @@ if(CADMIUM_BUILD_TESTS)
     find_package(Catch2 CONFIG REQUIRED)
     enable_testing()
 
-    # Batch 0: concept-satisfaction tests (memory-vault-dwr)
-    add_executable(pdevs_concepts_test test/pdevs_concepts_test.cpp)
-    target_link_libraries(pdevs_concepts_test PRIVATE cadmium Catch2::Catch2WithMain)
-    add_test(NAME pdevs_concepts_test COMMAND pdevs_concepts_test)
+    # Batch 0: concept-satisfaction tests
+    foreach(test_name
+            pdevs_concepts_test
+            stdevs_concepts_test)
+        add_executable(${test_name} test/${test_name}.cpp)
+        target_link_libraries(${test_name} PRIVATE cadmium Catch2::Catch2WithMain)
+        add_test(NAME ${test_name} COMMAND ${test_name})
+    endforeach()
 
     # Batch 1: pdevs static engine (memory-vault-9py)
     foreach(test_name
