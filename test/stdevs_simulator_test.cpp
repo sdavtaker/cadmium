@@ -25,75 +25,48 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <cadmium/basic_model/stdevs/bernoulli_generator.hpp>
+#include <cadmium/basic_model/stdevs/bernoulli_processor.hpp>
 #include <cadmium/engine/stdevs_simulator.hpp>
-#include <cadmium/modeling/message_box.hpp>
-#include <cadmium/modeling/ports.hpp>
 
-#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <limits>
 #include <random>
 
-// ── Test models ────────────────────────────────────────────────────────────────
+// ── Concrete submodels used throughout these tests ────────────────────────────
 //
-// flip_gen: generates events with period randomly drawn from {1, 2} via
-// Bernoulli(0.5) in each internal_transition.  Initial state = 1 (period 1)
-// so the first scheduled event is deterministic regardless of seed.
-//
-// stdevs_sink: passive model that records received messages. Has external input
-// but always stays passive — time_advance = infinity.
+// int_flip_gen: period ∈ {1, 2} with equal probability; outputs constant 1.
+// unit_processor: always accepts (p_accept=1), processing_time=1.
 
 namespace {
 
     using RNG = std::mt19937;
 
-    template <typename TIME> struct flip_gen {
-        struct out : public cadmium::out_port<int> {};
-        using state_type   = TIME;
-        state_type state   = TIME{1}; // first event at t = state
-        using input_ports  = std::tuple<>;
-        using output_ports = std::tuple<out>;
-
-        void internal_transition(RNG &rng) {
-            std::bernoulli_distribution coin(0.5);
-            state = coin(rng) ? TIME{1} : TIME{2};
+    template <typename TIME>
+    struct int_flip_gen
+        : public cadmium::basic_models::stdevs::bernoulli_generator<int, TIME, RNG> {
+        TIME period_a() const override {
+            return TIME{1};
         }
-
-        void external_transition(TIME, typename cadmium::make_message_box<input_ports>::type,
-                                 RNG &) {}
-
-        typename cadmium::make_message_box<output_ports>::type output() const {
-            typename cadmium::make_message_box<output_ports>::type box;
-            cadmium::get_message<out>(box) = 1;
-            return box;
+        TIME period_b() const override {
+            return TIME{2};
         }
-
-        TIME time_advance() const {
-            return state;
+        double p() const override {
+            return 0.5;
+        }
+        int output_message() const override {
+            return 1;
         }
     };
 
-    template <typename TIME> struct stdevs_sink {
-        struct in : public cadmium::in_port<int> {};
-        using state_type   = int; // count of received messages
-        state_type state   = 0;
-        using input_ports  = std::tuple<in>;
-        using output_ports = std::tuple<>;
-
-        void internal_transition(RNG &) {}
-
-        void external_transition(TIME, typename cadmium::make_message_box<input_ports>::type box,
-                                 RNG &) {
-            if (cadmium::get_message<in>(box).has_value())
-                ++state;
+    template <typename TIME>
+    struct unit_processor
+        : public cadmium::basic_models::stdevs::bernoulli_processor<int, TIME, RNG> {
+        TIME processing_time() const override {
+            return TIME{1};
         }
-
-        typename cadmium::make_message_box<output_ports>::type output() const {
-            return {};
-        }
-
-        TIME time_advance() const {
-            return std::numeric_limits<TIME>::infinity();
+        double p_accept() const override {
+            return 1.0;
         }
     };
 
@@ -101,37 +74,39 @@ namespace {
 
 // ── Type aliases ──────────────────────────────────────────────────────────────
 
-using flip_sim_t = cadmium::engine::stdevs::simulator<flip_gen, float, RNG>;
-using sink_sim_t = cadmium::engine::stdevs::simulator<stdevs_sink, float, RNG>;
-using out_box_t  = typename cadmium::make_message_box<flip_gen<float>::output_ports>::type;
-using in_box_t   = typename cadmium::make_message_box<stdevs_sink<float>::input_ports>::type;
+using gen_defs  = cadmium::basic_models::stdevs::bernoulli_generator_defs<int>;
+using proc_defs = cadmium::basic_models::stdevs::bernoulli_processor_defs<int>;
 
-// ── Simulator tests: flip_gen ─────────────────────────────────────────────────
+using gen_sim_t     = cadmium::engine::stdevs::simulator<int_flip_gen, float, RNG>;
+using proc_sim_t    = cadmium::engine::stdevs::simulator<unit_processor, float, RNG>;
+using proc_in_box_t = typename cadmium::make_message_box<unit_processor<float>::input_ports>::type;
 
-SCENARIO("stdevs flip_gen simulator initialises with next = initial period",
-         "[stdevs][simulator][flip_gen]") {
-    GIVEN("a flip_gen simulator initialised at t=0") {
+// ── bernoulli_generator simulator ────────────────────────────────────────────
+
+SCENARIO("stdevs bernoulli_generator simulator initialises with next = period_a",
+         "[stdevs][simulator][bernoulli_generator]") {
+    GIVEN("an int_flip_gen simulator initialised at t=0") {
         RNG rng(42u);
-        flip_sim_t s;
+        gen_sim_t s;
         s.init(0.0f, rng);
         WHEN("next is queried") {
-            THEN("it equals the initial period of 1") {
+            THEN("it equals period_a() = 1") {
                 CHECK(s.next() == 1.0f);
             }
         }
     }
 }
 
-SCENARIO("stdevs flip_gen simulator produces output at scheduled time",
-         "[stdevs][simulator][flip_gen]") {
-    GIVEN("a flip_gen simulator initialised at t=0") {
+SCENARIO("stdevs bernoulli_generator simulator produces output at scheduled time",
+         "[stdevs][simulator][bernoulli_generator]") {
+    GIVEN("an int_flip_gen simulator initialised at t=0") {
         RNG rng(42u);
-        flip_sim_t s;
+        gen_sim_t s;
         s.init(0.0f, rng);
-        WHEN("outputs are collected at the scheduled time of 1.0") {
+        WHEN("outputs are collected at the scheduled time t=1") {
             s.collect_outputs(1.0f);
-            THEN("the out port holds value 1") {
-                const auto &opt = cadmium::get_message<flip_gen<float>::out>(s.outbox());
+            THEN("the out port holds the configured output_message() = 1") {
+                const auto &opt = cadmium::get_message<gen_defs::out>(s.outbox());
                 REQUIRE(opt.has_value());
                 CHECK(opt.value() == 1);
             }
@@ -139,13 +114,13 @@ SCENARIO("stdevs flip_gen simulator produces output at scheduled time",
     }
 }
 
-SCENARIO("stdevs flip_gen simulator produces no output before scheduled time",
-         "[stdevs][simulator][flip_gen]") {
-    GIVEN("a flip_gen simulator initialised at t=0") {
+SCENARIO("stdevs bernoulli_generator simulator produces no output before scheduled time",
+         "[stdevs][simulator][bernoulli_generator]") {
+    GIVEN("an int_flip_gen simulator initialised at t=0") {
         RNG rng(42u);
-        flip_sim_t s;
+        gen_sim_t s;
         s.init(0.0f, rng);
-        WHEN("outputs are collected at t=0.5 (before next)") {
+        WHEN("outputs are collected at t=0.5 (before first event)") {
             s.collect_outputs(0.5f);
             THEN("the outbox is empty") {
                 CHECK(cadmium::engine::devs::all_box_empty(s.outbox()));
@@ -154,15 +129,16 @@ SCENARIO("stdevs flip_gen simulator produces no output before scheduled time",
     }
 }
 
-SCENARIO("stdevs flip_gen simulator reschedules after internal transition",
-         "[stdevs][simulator][flip_gen]") {
-    GIVEN("a flip_gen simulator initialised at t=0 (next=1) and advanced to t=1") {
+SCENARIO(
+    "stdevs bernoulli_generator simulator reschedules within {period_a, period_b} after advance",
+    "[stdevs][simulator][bernoulli_generator]") {
+    GIVEN("an int_flip_gen simulator advanced to t=1") {
         RNG rng(42u);
-        flip_sim_t s;
+        gen_sim_t s;
         s.init(0.0f, rng);
         s.advance_simulation(1.0f);
-        WHEN("next is queried after the transition") {
-            THEN("it is either 2 or 3 (period drawn from {1,2}, added to t=1)") {
+        WHEN("next is queried") {
+            THEN("it is 2.0 (period_a=1 from t=1) or 3.0 (period_b=2 from t=1)") {
                 float n = s.next();
                 CHECK((n == 2.0f || n == 3.0f));
             }
@@ -170,48 +146,45 @@ SCENARIO("stdevs flip_gen simulator reschedules after internal transition",
     }
 }
 
-SCENARIO("same seed produces identical transition sequence",
-         "[stdevs][simulator][flip_gen][determinism]") {
-    GIVEN("two flip_gen simulators seeded identically") {
+SCENARIO("stdevs bernoulli_generator produces identical transitions with same seed",
+         "[stdevs][simulator][bernoulli_generator][determinism]") {
+    GIVEN("two int_flip_gen simulators seeded identically") {
         RNG rng_a(99u);
         RNG rng_b(99u);
-        flip_sim_t sa, sb;
+        gen_sim_t sa, sb;
         sa.init(0.0f, rng_a);
         sb.init(0.0f, rng_b);
         WHEN("both are advanced through 10 internal transitions") {
             for (int i = 0; i < 10; ++i) {
-                float ta = sa.next();
-                float tb = sb.next();
-                REQUIRE(ta == tb);
-                sa.advance_simulation(ta);
-                sb.advance_simulation(tb);
+                REQUIRE(sa.next() == sb.next());
+                float t = sa.next();
+                sa.advance_simulation(t);
+                sb.advance_simulation(t);
             }
-            THEN("their next scheduled times remain identical throughout") {
+            THEN("next times remain identical at every step") {
                 CHECK(sa.next() == sb.next());
             }
         }
     }
 }
 
-SCENARIO("stdevs flip_gen Bernoulli distribution is statistically correct",
-         "[stdevs][simulator][flip_gen][statistical]") {
-    GIVEN("a flip_gen simulator run for 2000 transitions") {
+SCENARIO("stdevs bernoulli_generator period distribution is statistically correct",
+         "[stdevs][simulator][bernoulli_generator][statistical]") {
+    GIVEN("an int_flip_gen simulator run for 2000 internal transitions") {
         RNG rng(12345u);
-        flip_sim_t s;
+        gen_sim_t s;
         s.init(0.0f, rng);
         int period1_count = 0;
         const int N       = 2000;
-        float t           = 0.0f;
         for (int i = 0; i < N; ++i) {
-            t = s.next();
+            float t = s.next();
             s.advance_simulation(t);
             if (s.next() - t == 1.0f)
                 ++period1_count;
         }
-        WHEN("the fraction of period-1 outcomes is measured") {
+        WHEN("the fraction of period_a choices is measured") {
             double frac = static_cast<double>(period1_count) / N;
-            THEN("it is within 3 sigma of 0.5 (sigma = sqrt(0.25/N) ≈ 0.011)") {
-                // 3 sigma ≈ 0.033; very low false-failure rate
+            THEN("it is within 3 sigma of p=0.5 (sigma≈0.011; bound: [0.47, 0.53])") {
                 CHECK(frac >= 0.47);
                 CHECK(frac <= 0.53);
             }
@@ -219,37 +192,74 @@ SCENARIO("stdevs flip_gen Bernoulli distribution is statistically correct",
     }
 }
 
-// ── Simulator tests: stdevs_sink (external transition) ────────────────────────
+// ── bernoulli_processor simulator ────────────────────────────────────────────
 
-SCENARIO("stdevs sink stays passive after init", "[stdevs][simulator][sink]") {
-    GIVEN("a sink simulator initialised at t=0") {
+SCENARIO("stdevs bernoulli_processor simulator starts passive",
+         "[stdevs][simulator][bernoulli_processor]") {
+    GIVEN("a unit_processor simulator initialised at t=0") {
         RNG rng(1u);
-        sink_sim_t s;
+        proc_sim_t s;
         s.init(0.0f, rng);
         WHEN("next is queried") {
-            THEN("it is infinity") {
+            THEN("it is infinity (idle, no job)") {
                 CHECK(s.next() == std::numeric_limits<float>::infinity());
             }
         }
     }
 }
 
-SCENARIO("stdevs sink counts received messages via external_transition",
-         "[stdevs][simulator][sink]") {
-    GIVEN("a sink simulator initialised at t=0") {
+SCENARIO("stdevs bernoulli_processor schedules output after accepting a job",
+         "[stdevs][simulator][bernoulli_processor]") {
+    GIVEN("a unit_processor simulator initialised at t=0") {
         RNG rng(1u);
-        sink_sim_t s;
+        proc_sim_t s;
         s.init(0.0f, rng);
-        WHEN("three messages are delivered at different times") {
-            for (int i = 1; i <= 3; ++i) {
-                in_box_t box{};
-                cadmium::get_message<stdevs_sink<float>::in>(box) = i;
-                s.inbox(box);
-                s.advance_simulation(static_cast<float>(i));
+        WHEN("a message is placed in the inbox and simulation is advanced at t=2") {
+            proc_in_box_t box{};
+            cadmium::get_message<proc_defs::in>(box) = 42;
+            s.inbox(box);
+            s.advance_simulation(2.0f);
+            THEN("next is t=2 + processing_time=1 = 3") {
+                CHECK(s.next() == 3.0f);
             }
-            THEN("the state count equals 3") {
-                // access through the model is not directly exposed; use next() as
-                // proxy: still infinity since sink never schedules an internal event
+        }
+    }
+}
+
+SCENARIO("stdevs bernoulli_processor outputs the accepted job at scheduled time",
+         "[stdevs][simulator][bernoulli_processor]") {
+    GIVEN("a unit_processor that accepted job=42 at t=2 and fires at t=3") {
+        RNG rng(1u);
+        proc_sim_t s;
+        s.init(0.0f, rng);
+        proc_in_box_t box{};
+        cadmium::get_message<proc_defs::in>(box) = 42;
+        s.inbox(box);
+        s.advance_simulation(2.0f);
+        WHEN("outputs are collected at t=3") {
+            s.collect_outputs(3.0f);
+            THEN("the out port holds 42") {
+                const auto &opt = cadmium::get_message<proc_defs::out>(s.outbox());
+                REQUIRE(opt.has_value());
+                CHECK(opt.value() == 42);
+            }
+        }
+    }
+}
+
+SCENARIO("stdevs bernoulli_processor returns to idle after internal transition",
+         "[stdevs][simulator][bernoulli_processor]") {
+    GIVEN("a unit_processor that has just completed a job at t=3") {
+        RNG rng(1u);
+        proc_sim_t s;
+        s.init(0.0f, rng);
+        proc_in_box_t box{};
+        cadmium::get_message<proc_defs::in>(box) = 7;
+        s.inbox(box);
+        s.advance_simulation(1.0f);
+        s.advance_simulation(2.0f); // internal transition fires
+        WHEN("next is queried") {
+            THEN("it is infinity (back to idle)") {
                 CHECK(s.next() == std::numeric_limits<float>::infinity());
             }
         }
@@ -259,11 +269,11 @@ SCENARIO("stdevs sink counts received messages via external_transition",
 // ── Error conditions ──────────────────────────────────────────────────────────
 
 SCENARIO("stdevs simulator rejects collect_outputs past next event", "[stdevs][simulator][error]") {
-    GIVEN("a flip_gen simulator with next = 1.0") {
+    GIVEN("a gen simulator with next = 1.0") {
         RNG rng(1u);
-        flip_sim_t s;
+        gen_sim_t s;
         s.init(0.0f, rng);
-        WHEN("collect_outputs is called at t=2 (past next)") {
+        WHEN("collect_outputs is called at t=2 (past next=1)") {
             THEN("a domain_error is thrown") {
                 CHECK_THROWS_AS(s.collect_outputs(2.0f), std::domain_error);
             }
@@ -272,12 +282,12 @@ SCENARIO("stdevs simulator rejects collect_outputs past next event", "[stdevs][s
 }
 
 SCENARIO("stdevs simulator rejects advance_simulation in the past", "[stdevs][simulator][error]") {
-    GIVEN("a flip_gen simulator advanced to t=1") {
+    GIVEN("a gen simulator advanced to t=1") {
         RNG rng(1u);
-        flip_sim_t s;
+        gen_sim_t s;
         s.init(0.0f, rng);
         s.advance_simulation(1.0f);
-        WHEN("advance_simulation is called at t=0.5 (in the past)") {
+        WHEN("advance_simulation is called at t=0.5") {
             THEN("a domain_error is thrown") {
                 CHECK_THROWS_AS(s.advance_simulation(0.5f), std::domain_error);
             }
@@ -287,9 +297,9 @@ SCENARIO("stdevs simulator rejects advance_simulation in the past", "[stdevs][si
 
 SCENARIO("stdevs simulator rejects advance_simulation past a scheduled event",
          "[stdevs][simulator][error]") {
-    GIVEN("a flip_gen simulator with next = 1.0") {
+    GIVEN("a gen simulator with next = 1.0") {
         RNG rng(1u);
-        flip_sim_t s;
+        gen_sim_t s;
         s.init(0.0f, rng);
         WHEN("advance_simulation is called at t=5 (past next=1)") {
             THEN("a domain_error is thrown") {
