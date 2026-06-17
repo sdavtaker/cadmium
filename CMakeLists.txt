@@ -44,10 +44,12 @@ if(CADMIUM_BUILD_EXAMPLES)
     add_executable(devs-main-count-fives            example/devs/main-count-fives.cpp)
     add_executable(stdevs-main-bernoulli-generator  example/stdevs/main-bernoulli-generator.cpp)
     add_executable(stdevs-main-stochastic-channel   example/stdevs/main-stochastic-channel.cpp)
+    add_executable(qss-main-lotka-volterra           example/qss/main-lotka-volterra.cpp)
     foreach(tgt
             main-clock main-count-fives
             devs-main-clock devs-main-count-fives
-            stdevs-main-bernoulli-generator stdevs-main-stochastic-channel)
+            stdevs-main-bernoulli-generator stdevs-main-stochastic-channel
+            qss-main-lotka-volterra)
         target_link_libraries(${tgt} PRIVATE cadmium)
     endforeach()
 endif()
@@ -100,9 +102,10 @@ if(CADMIUM_BUILD_TESTS)
         add_test(NAME ${test_name} COMMAND ${test_name})
     endforeach()
 
-    # Batch 5: QSS1 atomics
+    # Batch 5: QSS1 atomics and experiments
     foreach(test_name
-            qss1_integrator_test)
+            qss1_integrator_test
+            qss1_lotka_volterra_test)
         add_executable(${test_name} test/${test_name}.cpp)
         target_link_libraries(${test_name} PRIVATE cadmium Catch2::Catch2WithMain)
         add_test(NAME ${test_name} COMMAND ${test_name})
@@ -195,6 +198,7 @@ if(CLANG_FORMAT)
         "${CMAKE_CURRENT_SOURCE_DIR}/example/pdevs/*.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/example/devs/*.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/example/stdevs/*.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/example/qss/*.cpp"
     )
     add_custom_target(format
         COMMAND ${CLANG_FORMAT} -i ${ALL_SOURCE_FILES}
