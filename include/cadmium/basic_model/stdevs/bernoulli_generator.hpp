@@ -31,6 +31,7 @@
 #include <cadmium/modeling/message_box.hpp>
 #include <cadmium/modeling/ports.hpp>
 
+#include <ostream>
 #include <random>
 #include <stdexcept>
 
@@ -83,6 +84,10 @@ namespace cadmium::basic_models::stdevs {
         struct state_type {
             TIME sigma{};
             bool initialized = false;
+
+            friend std::ostream &operator<<(std::ostream &os, const state_type &s) {
+                return os << "sigma=" << s.sigma << " initialized=" << s.initialized;
+            }
         };
         state_type state{};
 

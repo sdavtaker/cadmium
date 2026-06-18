@@ -59,15 +59,15 @@ SCENARIO("pdevs accumulator model can be default-constructed", "[pdevs][accumula
 SCENARIO("pdevs accumulator internal transition clears accumulated value", "[pdevs][accumulator]") {
     GIVEN("an accumulator in reset-pending state with sum 1.0") {
         auto a  = floating_accumulator<float>();
-        a.state = std::make_tuple(1.0f, true);
+        a.state = {.sum = 1.0f, .on_reset = true};
         REQUIRE(a.time_advance() == 0.0f);
         WHEN("internal_transition is called") {
             a.internal_transition();
             THEN("the sum is zeroed, the reset flag is cleared, and time advance "
                  "becomes infinite") {
                 CHECK(std::isinf(a.time_advance()));
-                CHECK(std::get<float>(a.state) == 0.0f);
-                CHECK(std::get<bool>(a.state) == false);
+                CHECK(a.state.sum == 0.0f);
+                CHECK(a.state.on_reset == false);
             }
         }
     }
@@ -78,7 +78,7 @@ SCENARIO("pdevs accumulator internal transition is rejected when not in "
          "[pdevs][accumulator]") {
     GIVEN("an accumulator not in reset-pending state") {
         auto a  = floating_accumulator<float>();
-        a.state = std::make_tuple(1.0f, false);
+        a.state = {.sum = 1.0f, .on_reset = false};
         WHEN("internal_transition is called") {
             THEN("a logic_error is thrown") {
                 CHECK_THROWS_AS(a.internal_transition(), std::logic_error);
@@ -92,7 +92,7 @@ SCENARIO("pdevs accumulator external transition is rejected when in "
          "[pdevs][accumulator]") {
     GIVEN("an accumulator in reset-pending state") {
         auto a  = floating_accumulator<float>();
-        a.state = std::make_tuple(1.0f, true);
+        a.state = {.sum = 1.0f, .on_reset = true};
         WHEN("external_transition is called with an add message") {
             typename cadmium::make_message_bags<floating_accumulator<float>::input_ports>::type
                 bags;
@@ -108,7 +108,7 @@ SCENARIO("pdevs accumulator output is rejected when not in reset-pending state",
          "[pdevs][accumulator]") {
     GIVEN("an accumulator not in reset-pending state") {
         auto a  = floating_accumulator<float>();
-        a.state = std::make_tuple(1.0f, false);
+        a.state = {.sum = 1.0f, .on_reset = false};
         WHEN("output is called") {
             THEN("a logic_error is thrown") {
                 CHECK_THROWS_AS(a.output(), std::logic_error);
@@ -122,20 +122,20 @@ SCENARIO("pdevs accumulator accumulates a bag of values across transitions "
          "[pdevs][accumulator]") {
     GIVEN("an accumulator with initial sum 10.0") {
         auto a  = floating_accumulator<float>();
-        a.state = std::make_tuple(10.0f, false);
+        a.state = {.sum = 10.0f, .on_reset = false};
         WHEN("5 is added, then 3 and 7 are added, then 3 more and a reset arrive") {
             typename cadmium::make_message_bags<floating_accumulator<float>::input_ports>::type
                 bags;
             cadmium::get_messages<floating_accumulator_defs::add>(bags).push_back(5.0f);
             a.external_transition(10.0f, bags);
-            CHECK(std::get<float>(a.state) == 15.0f);
+            CHECK(a.state.sum == 15.0f);
 
             typename cadmium::make_message_bags<floating_accumulator<float>::input_ports>::type
                 bags2;
             cadmium::get_messages<floating_accumulator_defs::add>(bags2).push_back(3.0f);
             cadmium::get_messages<floating_accumulator_defs::add>(bags2).push_back(7.0f);
             a.external_transition(9.0f, bags2);
-            CHECK(std::get<float>(a.state) == 25.0f);
+            CHECK(a.state.sum == 25.0f);
 
             typename cadmium::make_message_bags<floating_accumulator<float>::input_ports>::type
                 bags3;
@@ -145,8 +145,8 @@ SCENARIO("pdevs accumulator accumulates a bag of values across transitions "
 
             THEN("the accumulated sum is 28 and the model enters reset-pending "
                  "state") {
-                CHECK(std::get<float>(a.state) == 28.0f);
-                CHECK(std::get<bool>(a.state) == true);
+                CHECK(a.state.sum == 28.0f);
+                CHECK(a.state.on_reset == true);
             }
             AND_THEN("output returns a single message with the sum 28") {
                 auto out = a.output();
@@ -163,20 +163,20 @@ SCENARIO("pdevs accumulator confluence transition applies internal reset then "
     GIVEN("an accumulator with sum 10 that receives a reset message, entering "
           "reset-pending state") {
         auto a  = floating_accumulator<float>();
-        a.state = std::make_tuple(10.0f, false);
+        a.state = {.sum = 10.0f, .on_reset = false};
         typename cadmium::make_message_bags<floating_accumulator<float>::input_ports>::type bags;
         cadmium::get_messages<floating_accumulator_defs::reset>(bags).emplace_back();
         a.external_transition(0.0f, bags);
-        REQUIRE(std::get<float>(a.state) == 10.0f);
-        REQUIRE(std::get<bool>(a.state) == true);
+        REQUIRE(a.state.sum == 10.0f);
+        REQUIRE(a.state.on_reset == true);
         WHEN("a confluence transition arrives with an add message of 2") {
             typename cadmium::make_message_bags<floating_accumulator<float>::input_ports>::type
                 bags2;
             cadmium::get_messages<floating_accumulator_defs::add>(bags2).push_back(2.0f);
             a.confluence_transition(0.0f, bags2);
             THEN("the internal reset fires first and the new value 2 is accumulated") {
-                CHECK(std::get<float>(a.state) == 2.0f);
-                CHECK(std::get<bool>(a.state) == false);
+                CHECK(a.state.sum == 2.0f);
+                CHECK(a.state.on_reset == false);
             }
         }
     }

@@ -46,7 +46,11 @@ using hclock = chrono::high_resolution_clock;
  */
 
 // message representing ticks
-struct tick {};
+struct tick {
+    friend std::ostream &operator<<(std::ostream &os, const tick &) {
+        return os << "tick{}";
+    }
+};
 
 // generators for tick definition
 using out_p = cadmium::basic_models::pdevs::generator_defs<tick>::out;

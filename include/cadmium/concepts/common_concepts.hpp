@@ -32,10 +32,15 @@
 
 #include <concepts>
 #include <limits>
+#include <ostream>
 #include <tuple>
 #include <type_traits>
 
 namespace cadmium::concepts {
+
+    // Satisfied when T supports operator<<(std::ostream&, const T&).
+    template <typename T>
+    concept Streamable = requires(std::ostream &os, const T &v) { os << v; };
 
     namespace detail {
         template <typename Needle, typename... Ts>
@@ -59,6 +64,17 @@ namespace cadmium::concepts {
 
         template <typename PORT, typename TUPLE>
         inline constexpr bool port_in_tuple_v = port_in_tuple_impl<PORT, TUPLE>::value;
+
+        // True iff every port in the tuple has a Streamable message_type.
+        template <typename PortTuple> struct all_message_types_streamable_impl : std::false_type {};
+        template <typename... Ports>
+        struct all_message_types_streamable_impl<std::tuple<Ports...>>
+            : std::bool_constant<(Streamable<typename Ports::message_type> && ...)> {};
+        template <> struct all_message_types_streamable_impl<std::tuple<>> : std::true_type {};
+
+        template <typename PortTuple>
+        inline constexpr bool all_message_types_streamable_v =
+            all_message_types_streamable_impl<PortTuple>::value;
 
     } // namespace detail
 
