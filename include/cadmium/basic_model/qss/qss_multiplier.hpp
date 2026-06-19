@@ -31,8 +31,16 @@
 #include <cadmium/modeling/ports.hpp>
 
 #include <limits>
+#include <ostream>
 
 namespace cadmium::basic_models::qss {
+
+    // Time-independent port definitions shared by all qss_multiplier<T> instantiations.
+    struct qss_multiplier_defs {
+        struct in0 : public cadmium::in_port<double> {};
+        struct in1 : public cadmium::in_port<double> {};
+        struct out : public cadmium::out_port<double> {};
+    };
 
     /**
      * QSS Multiplier (2 inputs).
@@ -44,11 +52,11 @@ namespace cadmium::basic_models::qss {
      *
      * @tparam TIME  Simulation time type.
      */
-    template <typename TIME> class qss_multiplier {
+    template <typename TIME> class qss_multiplier : public qss_multiplier_defs {
       public:
-        struct in0 : public cadmium::in_port<double> {};
-        struct in1 : public cadmium::in_port<double> {};
-        struct out : public cadmium::out_port<double> {};
+        using in0 = qss_multiplier_defs::in0;
+        using in1 = qss_multiplier_defs::in1;
+        using out = qss_multiplier_defs::out;
 
         using input_ports  = std::tuple<in0, in1>;
         using output_ports = std::tuple<out>;
@@ -57,6 +65,10 @@ namespace cadmium::basic_models::qss {
             double u0;
             double u1;
             TIME sigma;
+
+            friend std::ostream &operator<<(std::ostream &os, const state_type &s) {
+                return os << "u0=" << s.u0 << " u1=" << s.u1 << " sigma=" << s.sigma;
+            }
         };
 
         state_type state{0.0, 0.0, std::numeric_limits<TIME>::infinity()};

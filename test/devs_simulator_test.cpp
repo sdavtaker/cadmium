@@ -28,7 +28,6 @@
 #include <cadmium/basic_model/devs/accumulator.hpp>
 #include <cadmium/basic_model/devs/generator.hpp>
 #include <cadmium/engine/devs_simulator.hpp>
-#include <cadmium/logger/tuple_to_ostream.hpp>
 
 #include <catch2/catch_test_macros.hpp>
 #include <limits>
