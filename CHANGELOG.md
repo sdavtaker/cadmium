@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-06-19
+
+### Added
+- `cadmium::log::set_logger(std::shared_ptr<spdlog::logger>)`: install a
+  caller-provided spdlog logger (e.g. a custom test sink) without touching
+  the implementation-detail `detail::instance()`.
+- `cadmium::log::reset_logger()`: remove the active logger so subsequent
+  `emit()` calls become no-ops.
+
 ## [0.4.1] - 2026-06-19
 
 ### Added
@@ -79,7 +88,8 @@ structured logging added.
 
 Last upstream release from SimulationEverywhere/cadmium before this fork.
 
-[Unreleased]: https://github.com/sdavtaker/cadmium/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/sdavtaker/cadmium/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/sdavtaker/cadmium/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/sdavtaker/cadmium/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/sdavtaker/cadmium/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/sdavtaker/cadmium/compare/v0.3.0...v0.3.1

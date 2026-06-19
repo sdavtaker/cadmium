@@ -98,6 +98,17 @@ namespace cadmium::log {
         detail::instance() = log;
     }
 
+    // Install a caller-provided spdlog logger (e.g. a test sink).
+    // The logger must already have the desired pattern and level set.
+    inline void set_logger(std::shared_ptr<spdlog::logger> logger) noexcept {
+        detail::instance() = std::move(logger);
+    }
+
+    // Remove the active logger; subsequent emit() calls become no-ops.
+    inline void reset_logger() noexcept {
+        detail::instance() = nullptr;
+    }
+
     inline void emit(level lvl, std::string_view event, std::string_view msg,
                      std::optional<double> sim_time = std::nullopt) {
         auto &log = detail::instance();
