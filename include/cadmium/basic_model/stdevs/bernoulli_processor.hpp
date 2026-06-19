@@ -33,6 +33,7 @@
 
 #include <limits>
 #include <optional>
+#include <ostream>
 #include <random>
 
 namespace cadmium::basic_models::stdevs {
@@ -75,6 +76,12 @@ namespace cadmium::basic_models::stdevs {
         // state_type: nullopt = idle; has_value = busy processing that job.
         struct state_type {
             std::optional<VALUE> job;
+
+            friend std::ostream &operator<<(std::ostream &os, const state_type &s) {
+                if (s.job.has_value())
+                    return os << "busy job=" << *s.job;
+                return os << "idle";
+            }
         };
         state_type state{};
 

@@ -159,6 +159,12 @@ namespace cadmium {
                             "Event received for executing after next internal event");
                     } else {
                         if (!cadmium::engine::devs::all_box_empty(_inbox)) {
+                            std::ostringstream oss_in;
+                            cadmium::engine::devs::print_box_by_port(oss_in, _inbox);
+                            cadmium::log::emit(
+                                cadmium::log::level::debug, "stdev_sim_messages_advance",
+                                _model_id + " " + oss_in.str(), cadmium::log::to_sim_double(t));
+
                             _model.external_transition(t - _last, _inbox, *_rng);
                             _last  = t;
                             _next  = _last + _model.time_advance();

@@ -32,9 +32,14 @@
 #include <cadmium/modeling/dynamic_model_translator.hpp>
 
 #include <catch2/catch_test_macros.hpp>
+#include <ostream>
 
 namespace {
-    struct test_tick {};
+    struct test_tick {
+        friend std::ostream &operator<<(std::ostream &os, const test_tick &) {
+            return os << "test_tick{}";
+        }
+    };
 
     using out_port = cadmium::basic_models::pdevs::generator_defs<test_tick>::out;
 
