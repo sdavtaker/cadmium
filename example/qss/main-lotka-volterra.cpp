@@ -36,204 +36,106 @@
  * t:     [0, 300]
  * dqmin: 1e-6,  dqrel: 1e-3
  *
- * Output: CSV to stdout — t,x1,x2
- * One row per output event from either integrator.
- *
- * Coupling (manual PDEVS simulation loop):
- *   int0.out_q --> wsum0.in<0>  (x1 with coeff +0.1)
- *   int0.out_q --> mult.in0
- *   int1.out_q --> wsum1.in<1>  (x2 with coeff -0.1)
- *   int1.out_q --> mult.in1
- *   mult.out   --> wsum0.in<1>  (x1*x2 with coeff -0.1)
- *   mult.out   --> wsum1.in<0>  (x1*x2 with coeff +0.1)
- *   wsum0.out  --> int0.in_u
- *   wsum1.out  --> int1.in_u
+ * The simulation is executed via the standard cadmium runner.
+ * The full trajectory is captured in the NDJSON log emitted to stdout:
+ *   grep sim_state output.ndjson | jq ...
  */
 
 #include <cadmium/basic_model/qss/qss1_integrator.hpp>
 #include <cadmium/basic_model/qss/qss_multiplier.hpp>
 #include <cadmium/basic_model/qss/qss_wsum.hpp>
+#include <cadmium/engine/devs_engine_helpers.hpp>
+#include <cadmium/engine/devs_runner.hpp>
+#include <cadmium/logger/cadmium_log.hpp>
+#include <cadmium/modeling/coupling.hpp>
 
-#include <array>
-#include <iostream>
-#include <limits>
-#include <optional>
+#include <tuple>
 
 using namespace cadmium::basic_models::qss;
-using cadmium::get_message;
-using cadmium::make_message_box;
+
+// ── TIME type ────────────────────────────────────────────────────────────────
 
 using TIME = double;
 
-// ── Component aliases ────────────────────────────────────────────────────────
+// ── Distinct submodel wrapper types ──────────────────────────────────────────
+//
+// cadmium's static coordinator uses the model type as a key to find each
+// sub-engine.  Two integrators of the same template class would collide, so
+// each logical component gets its own wrapper type.
 
-using Integrator = qss1_integrator<TIME>;
-using WSum2      = qss_wsum<2, TIME>;
-using Mult       = qss_multiplier<TIME>;
+template <typename T> struct prey_integrator : qss1_integrator<T> {
+    prey_integrator() : qss1_integrator<T>(0.5, 1e-6, 1e-3) {}
+};
 
-// ── Helpers: extract scalar from output box ──────────────────────────────────
+template <typename T> struct predator_integrator : qss1_integrator<T> {
+    predator_integrator() : qss1_integrator<T>(0.5, 1e-6, 1e-3) {}
+};
 
-static double get_int(const make_message_box<Integrator::output_ports>::type &b) {
-    return get_message<Integrator::out_q>(b).value();
-}
-static double get_ws(const make_message_box<WSum2::output_ports>::type &b) {
-    return get_message<WSum2::out>(b).value();
-}
-static double get_mult(const make_message_box<Mult::output_ports>::type &b) {
-    return get_message<Mult::out>(b).value();
-}
+// dx1/dt = +0.1*x1 - 0.1*(x1*x2)
+template <typename T> struct prey_derivative : qss_wsum<2, T> {
+    prey_derivative() : qss_wsum<2, T>({0.1, -0.1}) {}
+};
 
-// ── Helpers: build input boxes ───────────────────────────────────────────────
+// dx2/dt = +0.1*(x1*x2) - 0.1*x2
+template <typename T> struct predator_derivative : qss_wsum<2, T> {
+    predator_derivative() : qss_wsum<2, T>({0.1, -0.1}) {}
+};
 
-static make_message_box<Integrator::input_ports>::type int_box(double u) {
-    make_message_box<Integrator::input_ports>::type mb{};
-    get_message<Integrator::in_u>(mb).emplace(u);
-    return mb;
-}
+template <typename T> struct lv_product : qss_multiplier<T> {};
 
-static make_message_box<WSum2::input_ports>::type ws_box(std::optional<double> v0,
-                                                         std::optional<double> v1) {
-    make_message_box<WSum2::input_ports>::type mb{};
-    if (v0)
-        get_message<WSum2::in<0>>(mb).emplace(*v0);
-    if (v1)
-        get_message<WSum2::in<1>>(mb).emplace(*v1);
-    return mb;
-}
+// ── Port aliases ─────────────────────────────────────────────────────────────
+//
+// Use the time-independent defs structs so the same port type works regardless
+// of which TIME instantiation is used at runtime.
 
-static make_message_box<Mult::input_ports>::type mult_box(std::optional<double> v0,
-                                                          std::optional<double> v1) {
-    make_message_box<Mult::input_ports>::type mb{};
-    if (v0)
-        get_message<Mult::in0>(mb).emplace(*v0);
-    if (v1)
-        get_message<Mult::in1>(mb).emplace(*v1);
-    return mb;
-}
+using int_out_q = qss1_integrator_defs::out_q;
+using int_in_u  = qss1_integrator_defs::in_u;
+using ws_out    = qss_wsum_defs<2>::out;
+using ws_in0    = qss_wsum_defs<2>::template in<0>;
+using ws_in1    = qss_wsum_defs<2>::template in<1>;
+using mult_out  = qss_multiplier_defs::out;
+using mult_in0  = qss_multiplier_defs::in0;
+using mult_in1  = qss_multiplier_defs::in1;
 
-// ── Main ─────────────────────────────────────────────────────────────────────
+// ── Coupled model ─────────────────────────────────────────────────────────────
+//
+// Coupling (IC table):
+//   prey_integrator.out_q     → lv_product.in0
+//   prey_integrator.out_q     → prey_derivative.in<0>     (coeff +0.1: +0.1*x1)
+//   predator_integrator.out_q → lv_product.in1
+//   predator_integrator.out_q → predator_derivative.in<1> (coeff -0.1: -0.1*x2)
+//   lv_product.out            → prey_derivative.in<1>     (coeff -0.1: -0.1*x1*x2)
+//   lv_product.out            → predator_derivative.in<0> (coeff +0.1: +0.1*x1*x2)
+//   prey_derivative.out       → prey_integrator.in_u
+//   predator_derivative.out   → predator_integrator.in_u
+
+template <typename T> struct lotka_volterra {
+    using input_ports               = std::tuple<>;
+    using output_ports              = std::tuple<>;
+    using external_input_couplings  = std::tuple<>;
+    using external_output_couplings = std::tuple<>;
+    using select                    = cadmium::engine::devs::first_imminent;
+
+    template <typename U>
+    using models = std::tuple<prey_integrator<U>, predator_integrator<U>, prey_derivative<U>,
+                              predator_derivative<U>, lv_product<U>>;
+
+    using internal_couplings = std::tuple<
+        cadmium::modeling::IC<prey_integrator, int_out_q, lv_product, mult_in0>,
+        cadmium::modeling::IC<prey_integrator, int_out_q, prey_derivative, ws_in0>,
+        cadmium::modeling::IC<predator_integrator, int_out_q, lv_product, mult_in1>,
+        cadmium::modeling::IC<predator_integrator, int_out_q, predator_derivative, ws_in1>,
+        cadmium::modeling::IC<lv_product, mult_out, prey_derivative, ws_in1>,
+        cadmium::modeling::IC<lv_product, mult_out, predator_derivative, ws_in0>,
+        cadmium::modeling::IC<prey_derivative, ws_out, prey_integrator, int_in_u>,
+        cadmium::modeling::IC<predator_derivative, ws_out, predator_integrator, int_in_u>>;
+};
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 int main() {
-    constexpr TIME T_END   = 300.0;
-    constexpr double DQMIN = 1e-6;
-    constexpr double DQREL = 1e-3;
-    constexpr TIME INF     = std::numeric_limits<TIME>::infinity();
-
-    // Instantiate components
-    Integrator int0(0.5, DQMIN, DQREL); // prey    x1(0)=0.5
-    Integrator int1(0.5, DQMIN, DQREL); // predator x2(0)=0.5
-    Mult mult{};
-    WSum2 ws0({0.1, -0.1}); // dx1/dt = +0.1*x1 - 0.1*(x1*x2)
-    WSum2 ws1({0.1, -0.1}); // dx2/dt = +0.1*(x1*x2) - 0.1*x2
-
-    // Scheduled next-event times (absolute)
-    TIME t_int0 = int0.time_advance(); // 0
-    TIME t_int1 = int1.time_advance(); // 0
-    TIME t_mult = INF;
-    TIME t_ws0  = INF;
-    TIME t_ws1  = INF;
-
-    // Last time each component received an external event (for elapsed-time calc)
-    TIME last_int0 = 0.0, last_int1 = 0.0;
-    TIME last_mult = 0.0, last_ws0 = 0.0, last_ws1 = 0.0;
-
-    std::cout << "t,x1,x2\n";
-
-    while (true) {
-        TIME t_next = std::min({t_int0, t_int1, t_mult, t_ws0, t_ws1});
-        if (t_next >= T_END)
-            break;
-
-        // ── Collect outputs from all imminent components ──────────────────
-        std::optional<double> out_int0, out_int1, out_mult, out_ws0, out_ws1;
-        if (t_int0 == t_next)
-            out_int0 = get_int(int0.output());
-        if (t_int1 == t_next)
-            out_int1 = get_int(int1.output());
-        if (t_mult == t_next)
-            out_mult = get_mult(mult.output());
-        if (t_ws0 == t_next)
-            out_ws0 = get_ws(ws0.output());
-        if (t_ws1 == t_next)
-            out_ws1 = get_ws(ws1.output());
-
-        // ── Route outputs to inputs (IC table) ───────────────────────────
-        std::optional<double> to_mult_in0, to_mult_in1;
-        std::optional<double> to_ws0_in0, to_ws0_in1;
-        std::optional<double> to_ws1_in0, to_ws1_in1;
-        std::optional<double> to_int0_u, to_int1_u;
-
-        if (out_int0) {
-            to_mult_in0 = out_int0;
-            to_ws0_in0  = out_int0;
-        }
-        if (out_int1) {
-            to_mult_in1 = out_int1;
-            to_ws1_in1  = out_int1;
-        }
-        if (out_mult) {
-            to_ws0_in1 = out_mult;
-            to_ws1_in0 = out_mult;
-        }
-        if (out_ws0)
-            to_int0_u = out_ws0;
-        if (out_ws1)
-            to_int1_u = out_ws1;
-
-        // ── Internal transitions on imminent components ───────────────────
-        if (t_int0 == t_next) {
-            int0.internal_transition();
-            t_int0 = t_next + int0.time_advance();
-        }
-        if (t_int1 == t_next) {
-            int1.internal_transition();
-            t_int1 = t_next + int1.time_advance();
-        }
-        if (t_mult == t_next) {
-            mult.internal_transition();
-            t_mult = t_next + mult.time_advance();
-        }
-        if (t_ws0 == t_next) {
-            ws0.internal_transition();
-            t_ws0 = t_next + ws0.time_advance();
-        }
-        if (t_ws1 == t_next) {
-            ws1.internal_transition();
-            t_ws1 = t_next + ws1.time_advance();
-        }
-
-        // ── External transitions on components that received messages ─────
-        if (to_mult_in0 || to_mult_in1) {
-            mult.external_transition(t_next - last_mult, mult_box(to_mult_in0, to_mult_in1));
-            last_mult = t_next;
-            t_mult    = t_next + mult.time_advance();
-        }
-        if (to_ws0_in0 || to_ws0_in1) {
-            ws0.external_transition(t_next - last_ws0, ws_box(to_ws0_in0, to_ws0_in1));
-            last_ws0 = t_next;
-            t_ws0    = t_next + ws0.time_advance();
-        }
-        if (to_ws1_in0 || to_ws1_in1) {
-            ws1.external_transition(t_next - last_ws1, ws_box(to_ws1_in0, to_ws1_in1));
-            last_ws1 = t_next;
-            t_ws1    = t_next + ws1.time_advance();
-        }
-        if (to_int0_u) {
-            int0.external_transition(t_next - last_int0, int_box(*to_int0_u));
-            last_int0 = t_next;
-            t_int0    = t_next + int0.time_advance();
-        }
-        if (to_int1_u) {
-            int1.external_transition(t_next - last_int1, int_box(*to_int1_u));
-            last_int1 = t_next;
-            t_int1    = t_next + int1.time_advance();
-        }
-
-        // ── Record trajectory at each integrator output event ─────────────
-        if (out_int0 || out_int1) {
-            std::cout << t_next << "," << int0.state.q << "," << int1.state.q << "\n";
-        }
-    }
-
-    return 0;
+    cadmium::log::init();
+    cadmium::engine::devs::runner<TIME, lotka_volterra> r{0.0};
+    r.run_until(300.0);
+    cadmium::log::flush();
 }

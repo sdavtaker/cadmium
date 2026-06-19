@@ -32,9 +32,17 @@
 
 #include <array>
 #include <limits>
+#include <ostream>
 #include <utility>
 
 namespace cadmium::basic_models::qss {
+
+    // Time-independent port definitions shared by all qss_wsum<N, T> instantiations.
+    // Parameterised only on N so that qss_wsum<2, float>::in<0> == qss_wsum<2, double>::in<0>.
+    template <std::size_t N> struct qss_wsum_defs {
+        template <std::size_t I> struct in : public cadmium::in_port<double> {};
+        struct out : public cadmium::out_port<double> {};
+    };
 
     /**
      * QSS Weighted Sum (N inputs).
@@ -48,11 +56,11 @@ namespace cadmium::basic_models::qss {
      * @tparam N     Number of input ports (compile-time constant).
      * @tparam TIME  Simulation time type.
      */
-    template <std::size_t N, typename TIME> class qss_wsum {
+    template <std::size_t N, typename TIME> class qss_wsum : public qss_wsum_defs<N> {
       public:
-        // Input port tag parameterised by index — each is a distinct type.
-        template <std::size_t I> struct in : public cadmium::in_port<double> {};
-        struct out : public cadmium::out_port<double> {};
+        // Bring port names into scope for callers using qss_wsum<N,T>::in<I> / ::out.
+        template <std::size_t I> using in = typename qss_wsum_defs<N>::template in<I>;
+        using out                         = typename qss_wsum_defs<N>::out;
 
       private:
         template <std::size_t... Is> static auto make_input_ports_impl(std::index_sequence<Is...>) {
@@ -67,6 +75,16 @@ namespace cadmium::basic_models::qss {
             std::array<double, N> inputs{};
             bool pending; // true when an input arrived and output not yet emitted
             TIME sigma;
+
+            friend std::ostream &operator<<(std::ostream &os, const state_type &s) {
+                os << "inputs=[";
+                for (std::size_t i = 0; i < N; ++i) {
+                    if (i)
+                        os << ",";
+                    os << s.inputs[i];
+                }
+                return os << "] pending=" << s.pending << " sigma=" << s.sigma;
+            }
         };
 
         state_type state;

@@ -28,13 +28,12 @@
 #ifndef CADMIUM_DEVS_ACCUMULATOR_HPP
 #define CADMIUM_DEVS_ACCUMULATOR_HPP
 
-#include <cadmium/logger/tuple_to_ostream.hpp> // included to allow the accumulator state to use the << operator
 #include <cadmium/modeling/message_box.hpp>
 #include <cadmium/modeling/ports.hpp>
 
 #include <limits>
+#include <ostream>
 #include <stdexcept>
-#include <variant>
 
 namespace cadmium::basic_models::devs {
 
@@ -56,7 +55,11 @@ namespace cadmium::basic_models::devs {
     // externals resources before instantiate the models
     template <typename VALUE> struct accumulator_defs {
         // custom messages
-        struct reset_tick {};
+        struct reset_tick {
+            friend std::ostream &operator<<(std::ostream &os, const reset_tick &) {
+                return os << "reset_tick{}";
+            }
+        };
         // custom ports
         struct add : public in_port<VALUE> {};
         struct reset : public in_port<reset_tick> {};
@@ -69,9 +72,15 @@ namespace cadmium::basic_models::devs {
         using defs = accumulator_defs<VALUE>; // putting definitions in context
       public:
         // state
-        using on_reset   = bool;
-        using state_type = std::tuple<VALUE, on_reset>;
-        state_type state = std::make_tuple(VALUE{}, false);
+        struct state_type {
+            VALUE sum{};
+            bool on_reset = false;
+
+            friend std::ostream &operator<<(std::ostream &os, const state_type &s) {
+                return os << "sum=" << s.sum << " on_reset=" << s.on_reset;
+            }
+        };
+        state_type state{};
 
         // default constructor
         constexpr accumulator() noexcept {}
@@ -82,42 +91,39 @@ namespace cadmium::basic_models::devs {
 
         // DEVS functions
         void internal_transition() {
-            if (!std::get<on_reset>(state)) {
+            if (!state.on_reset) {
                 throw std::logic_error("Internal transition called while not on reset state");
             }
-            std::get<VALUE>(state)    = VALUE{0};
-            std::get<on_reset>(state) = false;
+            state.sum      = VALUE{0};
+            state.on_reset = false;
         }
 
         void external_transition(TIME, typename make_message_box<input_ports>::type mb) {
-            if (std::get<on_reset>(state)) {
+            if (state.on_reset) {
                 throw std::logic_error("External transition called while on reset state");
             }
 
-            // one message for each port could be  received
             auto &adder = get_message<typename defs::add>(mb);
             if (adder.has_value()) {
-                std::get<VALUE>(state) += adder.value();
+                state.sum += adder.value();
             }
             if (get_message<typename defs::reset>(mb).has_value()) {
-                std::get<on_reset>(state) = true;
+                state.on_reset = true;
             }
         }
 
         typename make_message_box<output_ports>::type output() const {
-            if (!std::get<on_reset>(state)) {
+            if (!state.on_reset) {
                 throw std::logic_error("Output function called while not on reset state");
             }
 
             typename make_message_box<output_ports>::type outmb;
-            get_message<typename defs::sum>(outmb).emplace(std::get<VALUE>(state));
+            get_message<typename defs::sum>(outmb).emplace(state.sum);
             return outmb;
         }
 
         TIME time_advance() const {
-            // we assume default constructor of time is 0 and infinity is defined in
-            // numeric_limits
-            return (std::get<on_reset>(state) ? TIME{} : std::numeric_limits<TIME>::infinity());
+            return (state.on_reset ? TIME{} : std::numeric_limits<TIME>::infinity());
         }
     };
 } // namespace cadmium::basic_models::devs

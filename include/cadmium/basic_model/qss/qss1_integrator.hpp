@@ -33,9 +33,16 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <ostream>
 #include <stdexcept>
 
 namespace cadmium::basic_models::qss {
+
+    // Time-independent port definitions shared by all qss1_integrator<T> instantiations.
+    struct qss1_integrator_defs {
+        struct in_u : public cadmium::in_port<double> {};
+        struct out_q : public cadmium::out_port<double> {};
+    };
 
     /**
      * QSS1 Quantized Integrator (Kofman & Junco 2001, Section 4).
@@ -53,10 +60,10 @@ namespace cadmium::basic_models::qss {
      *
      * API matches PowerDEVS atomics/qss/qss.cpp for cross-validation.
      */
-    template <typename TIME> class qss1_integrator {
+    template <typename TIME> class qss1_integrator : public qss1_integrator_defs {
       public:
-        struct in_u : public cadmium::in_port<double> {};
-        struct out_q : public cadmium::out_port<double> {};
+        using in_u  = qss1_integrator_defs::in_u;
+        using out_q = qss1_integrator_defs::out_q;
 
         using input_ports  = std::tuple<in_u>;
         using output_ports = std::tuple<out_q>;
@@ -67,6 +74,11 @@ namespace cadmium::basic_models::qss {
             double q;   // last quantized output (hysteresis centre)
             double dq;  // current quantum size
             TIME sigma; // time to next internal transition
+
+            friend std::ostream &operator<<(std::ostream &os, const state_type &s) {
+                return os << "x=" << s.x << " u=" << s.u << " q=" << s.q << " dq=" << s.dq
+                          << " sigma=" << s.sigma;
+            }
         };
 
         state_type state;

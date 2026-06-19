@@ -30,16 +30,20 @@
 #include <cadmium/engine/devs_coordinator.hpp>
 #include <cadmium/engine/devs_engine_helpers.hpp>
 #include <cadmium/engine/devs_simulator.hpp>
-#include <cadmium/logger/tuple_to_ostream.hpp>
 #include <cadmium/modeling/coupling.hpp>
 #include <cadmium/modeling/message_box.hpp>
 
 #include <catch2/catch_test_macros.hpp>
 #include <limits>
+#include <ostream>
 
 // ── Shared types ───────────────────────────────────────────────────────────
 
-struct tick {};
+struct tick {
+    friend std::ostream &operator<<(std::ostream &os, const tick &) {
+        return os << "tick{}";
+    }
+};
 
 template <typename TIME>
 struct tick_generator : public cadmium::basic_models::devs::generator<tick, TIME> {

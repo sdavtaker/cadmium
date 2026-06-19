@@ -51,6 +51,9 @@ namespace cadmium::concepts {
                 typename M::output_ports;
                 requires detail::all_unique_types_v<typename M::input_ports>;
                 requires detail::all_unique_types_v<typename M::output_ports>;
+                requires Streamable<typename M::state_type>;
+                requires detail::all_message_types_streamable_v<typename M::input_ports>;
+                requires detail::all_message_types_streamable_v<typename M::output_ports>;
             } &&
             requires(M m, TIME e, typename make_message_box<typename M::input_ports>::type in_box) {
                 { m.state } -> std::same_as<typename M::state_type &>;
