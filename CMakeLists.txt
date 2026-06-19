@@ -105,7 +105,9 @@ if(CADMIUM_BUILD_TESTS)
     # Batch 5: QSS1 atomics and experiments
     foreach(test_name
             qss1_integrator_test
-            qss1_lotka_volterra_test)
+            qss1_lotka_volterra_test
+            qss_cross_detect_test
+            qss_switch_test)
         add_executable(${test_name} test/${test_name}.cpp)
         target_link_libraries(${test_name} PRIVATE cadmium Catch2::Catch2WithMain)
         add_test(NAME ${test_name} COMMAND ${test_name})
