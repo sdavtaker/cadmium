@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-06-19
+
+### Added
+- `qss_cross_detect<TIME>` atomic in `include/cadmium/basic_model/qss/qss_cross_detect.hpp`:
+  zero-crossing detector that predicts when a quantized signal `u` with derivative `Du` will
+  cross a fixed threshold; emits `+1.0` (upward) or `-1.0` (downward).
+- `qss_switch<TIME>` atomic in `include/cadmium/basic_model/qss/qss_switch.hpp`:
+  level-triggered 2-to-1 mux routing `in0` when `sw == 0`, `in1` otherwise; fires
+  immediately on any input update to propagate the selected signal downstream.
+- `qss_cross_detect_defs` and `qss_switch_defs` time-independent port-defs structs.
+- 18 new Catch2 unit tests covering both atomics.
+
 ## [0.4.0] - 2026-06-19
 
 ### Added
@@ -67,7 +79,8 @@ structured logging added.
 
 Last upstream release from SimulationEverywhere/cadmium before this fork.
 
-[Unreleased]: https://github.com/sdavtaker/cadmium/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/sdavtaker/cadmium/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/sdavtaker/cadmium/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/sdavtaker/cadmium/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/sdavtaker/cadmium/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/sdavtaker/cadmium/compare/v0.2.9...v0.3.0
