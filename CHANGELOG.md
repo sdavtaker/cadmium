@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-19
+
+### Added
+- `Streamable` concept in `common_concepts.hpp`: satisfied when `os << v` is valid for a type.
+- `all_message_types_streamable_v` helper: true when every port in a tuple has a streamable `message_type`.
+- `Streamable` requirements added to `AtomicModel` in `pdevs_concepts.hpp`, `stdevs_concepts.hpp`, and `devs_concepts.hpp` — state type and all port message types must be streamable.
+- Inbox logging in `pdevs_simulator` and `stdevs_simulator`: a `sim_messages_advance` / `stdev_sim_messages_advance` NDJSON event is emitted before each external or confluence transition.
+- QSS1 atomic models: `qss1_integrator<T>`, `qss_wsum<N,T>`, `qss_multiplier<T>` in `include/cadmium/basic_model/qss/`.
+- Time-independent port defs structs for QSS atomics: `qss1_integrator_defs`, `qss_multiplier_defs`, `qss_wsum_defs<N>`. All QSS template instantiations share the same port types regardless of `TIME`.
+- Lotka-Volterra QSS1 example (`example/qss/main-lotka-volterra.cpp`) as a proper `devs::CoupledModel` driven by `cadmium::engine::devs::runner`.
+- QSS1 Lotka-Volterra integration test (`test/qss1_lotka_volterra_test.cpp`) validating populations stay positive, conserved-quantity drift is small, and convergence under finer quantum.
+
+### Changed
+- **Breaking**: `AtomicModel` concepts in all three engine families now require `operator<<` on `state_type` and on every port's `message_type`. Custom atomic models must add streaming support.
+- `devs::accumulator` state type converted from `std::tuple<VALUE, bool>` to a named struct (`sum`, `on_reset`) with `operator<<`; `reset_tick` gained `operator<<`.
+- `pdevs::accumulator` state type similarly converted to a named struct (done in 0.4.0 preparation).
+- DEVS and PDEVS test helpers: `tuple_to_ostream` includes removed; `tick`/`test_tick` message types gained `operator<<`.
+
 ## [0.3.1] - 2026-06-04
 
 ### Fixed
@@ -49,7 +67,8 @@ structured logging added.
 
 Last upstream release from SimulationEverywhere/cadmium before this fork.
 
-[Unreleased]: https://github.com/sdavtaker/cadmium/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/sdavtaker/cadmium/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/sdavtaker/cadmium/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/sdavtaker/cadmium/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/sdavtaker/cadmium/compare/v0.2.9...v0.3.0
 [0.2.9]: https://github.com/sdavtaker/cadmium/releases/tag/v0.2.9
