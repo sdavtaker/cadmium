@@ -51,21 +51,23 @@ using acc_defs   = cadmium::basic_models::devs::accumulator_defs<int>;
 using reset_tick = acc_defs::reset_tick;
 using acc_out_p  = cadmium::basic_models::devs::generator_defs<int>::out;
 
-template <typename TIME> struct int_gen : public cadmium::basic_models::devs::generator<int, TIME> {
-    TIME period() const override {
+template <typename TIME>
+struct int_gen : public cadmium::basic_models::devs::generator<int_gen<TIME>, int, TIME> {
+    TIME period() const {
         return TIME{1};
     }
-    int output_message() const override {
+    int output_message() const {
         return 1;
     }
 };
 
 template <typename TIME>
-struct reset_gen : public cadmium::basic_models::devs::generator<reset_tick, TIME> {
-    TIME period() const override {
+struct reset_gen
+    : public cadmium::basic_models::devs::generator<reset_gen<TIME>, reset_tick, TIME> {
+    TIME period() const {
         return TIME{5};
     }
-    reset_tick output_message() const override {
+    reset_tick output_message() const {
         return reset_tick{};
     }
 };

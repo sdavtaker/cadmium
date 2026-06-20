@@ -47,11 +47,12 @@ struct test_tick {
 using out_port = cadmium::basic_models::pdevs::generator_defs<test_tick>::out;
 
 template <typename TIME>
-struct test_generator : public cadmium::basic_models::pdevs::generator<test_tick, TIME> {
-    float period() const override {
+struct test_generator
+    : public cadmium::basic_models::pdevs::generator<test_generator<TIME>, test_tick, TIME> {
+    float period() const {
         return 1.0f;
     }
-    test_tick output_message() const override {
+    test_tick output_message() const {
         return test_tick{};
     }
 };

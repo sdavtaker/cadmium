@@ -299,15 +299,15 @@ namespace {
     using floating_accumulator      = cadmium::basic_models::pdevs::accumulator<float, TIME>;
     using floating_accumulator_defs = cadmium::basic_models::pdevs::accumulator_defs<float>;
 
-    template <typename TIME>
-    using floating_generator_base = cadmium::basic_models::pdevs::generator<float, TIME>;
     using floating_generator_defs = cadmium::basic_models::pdevs::generator_defs<float>;
 
-    template <typename TIME> struct floating_generator : public floating_generator_base<TIME> {
-        float period() const override {
+    template <typename TIME>
+    struct floating_generator
+        : public cadmium::basic_models::pdevs::generator<floating_generator<TIME>, float, TIME> {
+        float period() const {
             return 1.0f;
         }
-        float output_message() const override {
+        float output_message() const {
             return 1.0f;
         }
     };
@@ -757,6 +757,17 @@ namespace devs_fixtures {
         }
     };
 
+    template <typename TIME>
+    struct float_generator
+        : public cadmium::basic_models::devs::generator<float_generator<TIME>, float, TIME> {
+        float period() const {
+            return 1.0f;
+        }
+        float output_message() const {
+            return 1.0f;
+        }
+    };
+
 } // namespace devs_fixtures
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -769,8 +780,7 @@ SCENARIO("minimal valid DEVS atomic model satisfies devs::AtomicModel",
 }
 
 SCENARIO("DEVS generator satisfies devs::AtomicModel", "[devs][concepts][atomic][positive]") {
-    STATIC_REQUIRE(
-        devs_concepts::AtomicModel<cadmium::basic_models::devs::generator<float, float>, float>);
+    STATIC_REQUIRE(devs_concepts::AtomicModel<devs_fixtures::float_generator<float>, float>);
 }
 
 SCENARIO("DEVS passive satisfies devs::AtomicModel", "[devs][concepts][atomic][positive]") {

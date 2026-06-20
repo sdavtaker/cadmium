@@ -49,31 +49,34 @@ struct tick {};
 using out_p = cadmium::basic_models::devs::generator_defs<tick>::out;
 
 template <typename TIME>
-struct hour_generator : public cadmium::basic_models::devs::generator<tick, TIME> {
-    TIME period() const override {
+struct hour_generator
+    : public cadmium::basic_models::devs::generator<hour_generator<TIME>, tick, TIME> {
+    TIME period() const {
         return TIME{3600};
     }
-    tick output_message() const override {
+    tick output_message() const {
         return tick{};
     }
 };
 
 template <typename TIME>
-struct minute_generator : public cadmium::basic_models::devs::generator<tick, TIME> {
-    TIME period() const override {
+struct minute_generator
+    : public cadmium::basic_models::devs::generator<minute_generator<TIME>, tick, TIME> {
+    TIME period() const {
         return TIME{60};
     }
-    tick output_message() const override {
+    tick output_message() const {
         return tick{};
     }
 };
 
 template <typename TIME>
-struct second_generator : public cadmium::basic_models::devs::generator<tick, TIME> {
-    TIME period() const override {
+struct second_generator
+    : public cadmium::basic_models::devs::generator<second_generator<TIME>, tick, TIME> {
+    TIME period() const {
         return TIME{1};
     }
-    tick output_message() const override {
+    tick output_message() const {
         return tick{};
     }
 };
