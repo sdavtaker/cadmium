@@ -55,22 +55,23 @@ const float gen_period = 0.1f;
 const float gen_output = 1.0f;
 
 template <typename TIME>
-using floating_generator_base = cadmium::basic_models::pdevs::generator<float, TIME>;
-
-template <typename TIME> struct floating_generator_a : public floating_generator_base<TIME> {
-    float period() const override {
+struct floating_generator_a
+    : public cadmium::basic_models::pdevs::generator<floating_generator_a<TIME>, float, TIME> {
+    float period() const {
         return gen_period;
     }
-    float output_message() const override {
+    float output_message() const {
         return gen_output;
     }
 };
 
-template <typename TIME> struct floating_generator_b : public floating_generator_base<TIME> {
-    float period() const override {
+template <typename TIME>
+struct floating_generator_b
+    : public cadmium::basic_models::pdevs::generator<floating_generator_b<TIME>, float, TIME> {
+    float period() const {
         return gen_period;
     }
-    float output_message() const override {
+    float output_message() const {
         return gen_output;
     }
 };

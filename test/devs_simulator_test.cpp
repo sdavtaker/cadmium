@@ -212,15 +212,15 @@ SCENARIO("devs accumulator simulator rejects advancing past a scheduled internal
 const float gen_period  = 1.0f;
 const float gen_message = 2.0f;
 
-template <typename TIME>
-using float_generator_base = cadmium::basic_models::devs::generator<float, TIME>;
 using float_generator_defs = cadmium::basic_models::devs::generator_defs<float>;
 
-template <typename TIME> struct float_generator : public float_generator_base<TIME> {
-    float period() const override {
+template <typename TIME>
+struct float_generator
+    : public cadmium::basic_models::devs::generator<float_generator<TIME>, float, TIME> {
+    float period() const {
         return gen_period;
     }
-    float output_message() const override {
+    float output_message() const {
         return gen_message;
     }
 };

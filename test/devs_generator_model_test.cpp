@@ -33,15 +33,15 @@
 const float init_period         = 0.1f;
 const float init_output_message = 1.0f;
 
-template <typename TIME>
-using floating_generator_base = cadmium::basic_models::devs::generator<float, TIME>;
 using floating_generator_defs = cadmium::basic_models::devs::generator_defs<float>;
 
-template <typename TIME> struct floating_generator : public floating_generator_base<TIME> {
-    float period() const override {
+template <typename TIME>
+struct floating_generator
+    : public cadmium::basic_models::devs::generator<floating_generator<TIME>, float, TIME> {
+    float period() const {
         return init_period;
     }
-    float output_message() const override {
+    float output_message() const {
         return init_output_message;
     }
 };

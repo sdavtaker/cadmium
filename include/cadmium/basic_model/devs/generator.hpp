@@ -47,27 +47,21 @@ namespace cadmium::basic_models::devs {
      * - external = {}
      * - out ("active", t) = outvalue
      * - advance(phase, t) = period - t
+     *
+     * CRTP base: Derived must provide:
+     *   TIME  period() const
+     *   VALUE output_message() const
      */
 
-    // definitions used for defining the accumulator that need to be accessed by
-    // externals resources before instantiate the models This includes Ports
-    // referenced by couplings, and
     template <typename VALUE> struct generator_defs {
         // custom ports
         struct out : public out_port<VALUE> {};
     };
 
-    // This is a meta-model, it should be overloaded for declaring the tick time and
-    // tick values in the generator
-    template <typename VALUE, typename TIME> // VALUE is the type of Y
-    class generator {
-        using defs = generator_defs<VALUE>; // putting definitions in context
+    template <typename Derived, typename VALUE, typename TIME> class generator {
+        using defs = generator_defs<VALUE>;
+
       public:
-        // these functions need to be overriden to define the generator behavior
-        virtual TIME period() const          = 0; // time between consecutive messages
-        virtual VALUE output_message() const = 0; // message to be output
-        // required definitions start here
-        // default constructor
         constexpr generator() noexcept {}
 
         // state definition
@@ -86,18 +80,17 @@ namespace cadmium::basic_models::devs {
             throw std::logic_error("External transition called in a model with no input ports");
         }
 
-        // output function
+        // output function — calls Derived::output_message() without virtual dispatch
         typename make_message_box<output_ports>::type output() const {
             typename make_message_box<output_ports>::type outbox;
-            cadmium::get_message<typename defs::out>(outbox).emplace(output_message());
+            cadmium::get_message<typename defs::out>(outbox).emplace(
+                static_cast<const Derived *>(this)->output_message());
             return outbox;
         }
 
-        // time_advance function
+        // time_advance function — calls Derived::period() without virtual dispatch
         TIME time_advance() const {
-            // we assume default constructor of TIME is 0 and infinity is defined in
-            // numeric_limits
-            return period();
+            return static_cast<const Derived *>(this)->period();
         }
     };
 } // namespace cadmium::basic_models::devs

@@ -44,11 +44,12 @@ struct tick {
 };
 
 template <typename TIME>
-struct tick_generator : public cadmium::basic_models::devs::generator<tick, TIME> {
-    TIME period() const override {
+struct tick_generator
+    : public cadmium::basic_models::devs::generator<tick_generator<TIME>, tick, TIME> {
+    TIME period() const {
         return TIME{1};
     }
-    tick output_message() const override {
+    tick output_message() const {
         return tick{};
     }
 };
@@ -96,22 +97,24 @@ SCENARIO("devs runner returns infinity when simulation passivates", "[devs][runn
 //
 //  At each multiple of 5 the accumulator outputs 5 (SELECT: int_gen first).
 
-template <typename TIME> struct int_gen : public cadmium::basic_models::devs::generator<int, TIME> {
-    TIME period() const override {
+template <typename TIME>
+struct int_gen : public cadmium::basic_models::devs::generator<int_gen<TIME>, int, TIME> {
+    TIME period() const {
         return TIME{1};
     }
-    int output_message() const override {
+    int output_message() const {
         return 1;
     }
 };
 
 template <typename TIME>
-struct reset_gen : public cadmium::basic_models::devs::generator<
-                       cadmium::basic_models::devs::accumulator_defs<int>::reset_tick, TIME> {
-    TIME period() const override {
+struct reset_gen
+    : public cadmium::basic_models::devs::generator<
+          reset_gen<TIME>, cadmium::basic_models::devs::accumulator_defs<int>::reset_tick, TIME> {
+    TIME period() const {
         return TIME{5};
     }
-    cadmium::basic_models::devs::accumulator_defs<int>::reset_tick output_message() const override {
+    cadmium::basic_models::devs::accumulator_defs<int>::reset_tick output_message() const {
         return {};
     }
 };

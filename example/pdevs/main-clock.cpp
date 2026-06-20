@@ -54,35 +54,39 @@ struct tick {
 
 // generators for tick definition
 using out_p = cadmium::basic_models::pdevs::generator_defs<tick>::out;
-template <typename TIME>
-using tick_generator_base = cadmium::basic_models::pdevs::generator<tick, TIME>;
 
-template <typename TIME> struct hour_generator : public tick_generator_base<TIME> {
-    float period() const override {
+template <typename TIME>
+struct hour_generator
+    : public cadmium::basic_models::pdevs::generator<hour_generator<TIME>, tick, TIME> {
+    float period() const {
         return 3600.0f; // using float for time in this example
     }
 
-    tick output_message() const override {
+    tick output_message() const {
         return tick();
     }
 };
 
-template <typename TIME> struct minute_generator : public tick_generator_base<TIME> {
-    float period() const override {
+template <typename TIME>
+struct minute_generator
+    : public cadmium::basic_models::pdevs::generator<minute_generator<TIME>, tick, TIME> {
+    float period() const {
         return 60.0f; // using float for time in this example
     }
 
-    tick output_message() const override {
+    tick output_message() const {
         return tick();
     }
 };
 
-template <typename TIME> struct second_generator : public tick_generator_base<TIME> {
-    float period() const override {
+template <typename TIME>
+struct second_generator
+    : public cadmium::basic_models::pdevs::generator<second_generator<TIME>, tick, TIME> {
+    float period() const {
         return 1.0f; // using float for time in this example
     }
 
-    tick output_message() const override {
+    tick output_message() const {
         return tick();
     }
 };
