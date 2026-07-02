@@ -5,8 +5,7 @@ functions with probability-space-valued mappings.  The key insight — proven in
 original paper — is that any such mapping is equivalent to a sampling function that
 takes a stream of uniform random numbers and returns the next state.  In cadmium this
 is realised by passing a `URNG&` directly into the internal and external transition
-functions: the user draws from any `std::<random>` distribution inside the function
-body.
+functions: the user draws from any `<random>` distribution inside the function body.
 
 The output function λ and time-advance ta must remain **deterministic** (they are
 required to be measurable functions of state, per CKW10 Section 4.2).
@@ -83,7 +82,8 @@ struct ExponentialServer {
     };
     state_type state;
 
-    const double mu;   // service rate (events/time unit)
+    double mu;   // service rate (events/time unit)
+    ExponentialServer() : mu(1.0) {}                   // default: mu=1.0
     explicit ExponentialServer(double service_rate) : mu(service_rate) {}
 
     // ta(s): deterministic — how long until service completes
@@ -96,11 +96,17 @@ struct ExponentialServer {
     }
 
     // δ_ext(s, e, x, rng): job arrives — accept if idle, drop if busy
-    void external_transition(TIME /*elapsed*/,
+    void external_transition(TIME elapsed,
                              typename cadmium::make_message_box<input_ports>::type in_box,
                              std::mt19937& rng) {
-        if (state.busy)
+        if (state.busy) {
+            // Keep the remaining service countdown accurate.
+            // The runner recomputes next-event as t + time_advance() after every
+            // external transition, so sigma must hold the *remaining* time, not
+            // the original draw.
+            state.sigma -= elapsed;
             return;  // single-buffer: drop arriving job
+        }
 
         if (auto msg = cadmium::get_message<InPort>(in_box)) {
             state.current = *msg;
@@ -158,13 +164,15 @@ int main() {
 ```
 
 The runner owns the `std::mt19937`, seeds it with the given value, and logs the seed
-so every run can be reproduced.  Construct `ExponentialServer` with parameters by
-specialising the template or wrapping it:
+so every run can be reproduced.
+
+The runner default-constructs `MODEL<TIME>` internally, so the model must be
+default-constructible.  To run with a non-default rate, wrap the model:
 
 ```cpp
 template <typename TIME>
 struct FastServer : public ExponentialServer<TIME> {
-    FastServer() : ExponentialServer<TIME>(2.0) {}  // mu=2.0
+    FastServer() : ExponentialServer<TIME>(2.0) {}  // override default mu=1.0
 };
 
 cadmium::engine::stdevs::runner<double, FastServer> r{0.0, 42u};
