@@ -6,21 +6,38 @@ It is not intended for general distribution — changes stay on this fork only.
 
 ## What this fork is
 
-A header-only C++23 PDEVS simulator. Keeps the static and dynamic PDEVS engines and
+A header-only C++23 simulator supporting three DEVS-family formalisms:
+Classic DEVS, PDEVS, and STDEVS.  Keeps the static and dynamic PDEVS engines and
 the classic basic models. Removes Cell-DEVS, real-time support, async/concurrent modes,
 and all Boost dependencies.
+
+### Formalism documentation
+
+| Formalism | Guide | Key difference |
+|---|---|---|
+| [Classic DEVS](docs/formalisms/devs.md) | `docs/formalisms/devs.md` | SELECT serialises simultaneous events; inputs via `message_box` |
+| [PDEVS](docs/formalisms/pdevs.md) | `docs/formalisms/pdevs.md` | Parallel imminent set; inputs via `message_bags`; confluence function |
+| [STDEVS](docs/formalisms/stdevs.md) | `docs/formalisms/stdevs.md` | Stochastic transitions take `URNG&`; reproducible via seed |
+
+Each guide is self-contained: formalism-to-API mapping, a complete working model,
+coupled model wiring, and the runner.
 
 ### What is kept
 
 - Static PDEVS engine: `engine/pdevs_simulator.hpp`, `pdevs_coordinator.hpp`,
   `pdevs_runner.hpp`, `pdevs_engine_helpers.hpp`
+- Classic DEVS engine: `engine/devs_simulator.hpp`, `devs_coordinator.hpp`,
+  `devs_runner.hpp`, `devs_engine_helpers.hpp`
+- STDEVS engine: `engine/stdevs_simulator.hpp`, `stdevs_coordinator.hpp`,
+  `stdevs_runner.hpp`, `stdevs_engine_helpers.hpp`
 - Dynamic PDEVS engine: `engine/pdevs_dynamic_*.hpp`
-- Basic models: `basic_model/devs/` and `basic_model/pdevs/`
+- Basic models: `basic_model/devs/`, `basic_model/pdevs/`, `basic_model/stdevs/`
+- QSS models: `basic_model/qss/`
 - Modeling: `modeling/coupling.hpp`, `message_bag.hpp`, `message_box.hpp`, `ports.hpp`,
   `dynamic_*.hpp`
 - Logger: spdlog-based NDJSON logger (`logger/cadmium_log.hpp`)
 - I/O: `io/iestream.hpp`, `io/oestream.hpp`
-- Examples: `example/pdevs/`
+- Examples: `example/devs/`, `example/pdevs/`, `example/stdevs/`, `example/qss/`
 
 ### What was removed
 
@@ -75,11 +92,14 @@ cmake --build build --target check-format   # report violations
 cmake --build build --target format         # apply fixes
 ```
 
-## Defining a PDEVS model
+## Quick start — PDEVS atomic model
+
+See [docs/formalisms/pdevs.md](docs/formalisms/pdevs.md) for the full guide.
 
 ```cpp
 #include <cadmium/modeling/ports.hpp>
 #include <cadmium/modeling/message_bag.hpp>
+#include <ostream>
 
 struct OutPort : public cadmium::out_port<int> {};
 
@@ -88,7 +108,12 @@ struct Counter {
     using input_ports  = std::tuple<>;
     using output_ports = std::tuple<OutPort>;
 
-    struct state_type { int n = 0; };
+    struct state_type {
+        int n = 0;
+        friend std::ostream& operator<<(std::ostream& os, const state_type& s) {
+            return os << s.n;
+        }
+    };
     state_type state;
 
     TIME time_advance() const { return TIME{1}; }
