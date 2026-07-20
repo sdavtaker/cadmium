@@ -37,6 +37,23 @@ namespace cadmium::modeling {
      */
     inline constexpr std::size_t not_packed = static_cast<std::size_t>(-1);
 
+    namespace detail {
+        /// True when M is a pack marker (float probe, mirroring the concepts).
+        template <template <typename T> class M> consteval bool is_pack_marker() {
+            return requires { M<float>::pack_size; };
+        }
+
+        /// pack_size of a marker; 1 for plain models (so range checks on
+        /// plain endpoints are vacuously satisfiable only via not_packed).
+        template <template <typename T> class M> consteval std::size_t pack_size_of() {
+            if constexpr (is_pack_marker<M>()) {
+                return M<float>::pack_size;
+            } else {
+                return 1;
+            }
+        }
+    } // namespace detail
+
     /**
      * pack<M, N> — a homogeneous collection of N instances of submodel M
      * usable as ONE entry of a models_tuple.
@@ -77,6 +94,9 @@ namespace cadmium::modeling {
     template <typename EXTERNAL_PORT, template <typename TIME> class PACK, std::size_t INDEX,
               typename SUBMODEL_PORT>
     struct pack_EIC {
+        static_assert(detail::is_pack_marker<PACK>(), "pack_EIC: submodel is not a pack");
+        static_assert(INDEX < detail::pack_size_of<PACK>(), "pack_EIC: index out of range");
+
         using external_input_port               = EXTERNAL_PORT;
         template <typename TIME> using submodel = PACK<TIME>;
         static constexpr std::size_t index      = INDEX;
@@ -90,6 +110,9 @@ namespace cadmium::modeling {
     template <template <typename TIME> class PACK, std::size_t INDEX, typename SUBMODEL_PORT,
               typename EXTERNAL_PORT>
     struct pack_EOC {
+        static_assert(detail::is_pack_marker<PACK>(), "pack_EOC: submodel is not a pack");
+        static_assert(INDEX < detail::pack_size_of<PACK>(), "pack_EOC: index out of range");
+
         template <typename TIME> using submodel = PACK<TIME>;
         static constexpr std::size_t index      = INDEX;
         using submodel_output_port              = SUBMODEL_PORT;
@@ -105,6 +128,16 @@ namespace cadmium::modeling {
               typename PORT_FROM, template <typename TIME> class SUBMODEL_TO, std::size_t TO_INDEX,
               typename PORT_TO>
     struct pack_IC {
+        static_assert(FROM_INDEX == not_packed || detail::is_pack_marker<SUBMODEL_FROM>(),
+                      "pack_IC: from_index given but from_model is not a pack");
+        static_assert(TO_INDEX == not_packed || detail::is_pack_marker<SUBMODEL_TO>(),
+                      "pack_IC: to_index given but to_model is not a pack");
+        static_assert(FROM_INDEX == not_packed ||
+                          FROM_INDEX < detail::pack_size_of<SUBMODEL_FROM>(),
+                      "pack_IC: from_index out of range");
+        static_assert(TO_INDEX == not_packed || TO_INDEX < detail::pack_size_of<SUBMODEL_TO>(),
+                      "pack_IC: to_index out of range");
+
         template <typename TIME> using from_model = SUBMODEL_FROM<TIME>;
         static constexpr std::size_t from_index   = FROM_INDEX;
         using from_model_output_port              = PORT_FROM;

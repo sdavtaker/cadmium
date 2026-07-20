@@ -252,3 +252,53 @@ TEST_CASE("pack_EIC routes coupled-model input to the addressed element only") {
     coord.advance_simulation(0.5);
     CHECK(coord.next() == std::numeric_limits<double>::infinity());
 }
+
+// ── pack_IC: plain→pack and same-pack element→element routing ───────────────
+
+namespace {
+
+    struct top_u0 : public cadmium::out_port<int> {};
+    struct top_u1 : public cadmium::out_port<int> {};
+
+    template <typename TIME> using chain2 = m::pack<tally, 2>::model<TIME>;
+
+    using chain_submodels = m::models_tuple<one_sec_gen, chain2>;
+    using chain_oports    = std::tuple<top_u0, top_u1>;
+    // gen (plain) feeds element 0; element 0's emissions feed element 1.
+    using chain_ics =
+        std::tuple<m::pack_IC<one_sec_gen, not_packed, gen_defs::out, chain2, 0, tally_defs::in>,
+                   m::pack_IC<chain2, 0, tally_defs::out, chain2, 1, tally_defs::in>>;
+    using chain_eocs = std::tuple<m::pack_EOC<chain2, 0, tally_defs::out, top_u0>,
+                                  m::pack_EOC<chain2, 1, tally_defs::out, top_u1>>;
+
+    template <typename TIME>
+    using chain_top =
+        m::devs::coupling<TIME, empty_iports, chain_oports, chain_submodels, empty_eic, chain_eocs,
+                          chain_ics, cadmium::engine::devs::first_imminent>;
+
+} // namespace
+
+TEST_CASE("pack_IC routes plain->pack and same-pack element-to-element") {
+    cadmium::engine::devs::coordinator<chain_top, double> coord;
+    coord.init(0.0);
+
+    std::vector<int> u0_seq, u1_seq;
+    auto next = coord.next();
+    while (next < 2.5) {
+        coord.collect_outputs(next);
+        if (const auto &v = coord.template outbox_port<top_u0>(); v.has_value()) {
+            u0_seq.push_back(*v);
+        }
+        if (const auto &v = coord.template outbox_port<top_u1>(); v.has_value()) {
+            u1_seq.push_back(*v);
+        }
+        coord.advance_simulation(next);
+        next = coord.next();
+    }
+
+    // Each second the generator adds 1 to element 0, whose emitted running
+    // total (1, then 2) is forwarded into element 1 — which accumulates
+    // those totals: 1, then 1 + 2 = 3.
+    CHECK(u0_seq == std::vector<int>{1, 2});
+    CHECK(u1_seq == std::vector<int>{1, 3});
+}
