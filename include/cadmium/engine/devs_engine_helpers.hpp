@@ -32,11 +32,14 @@
 #include <cadmium/logger/cadmium_log.hpp>
 #include <cadmium/logger/common_loggers_helpers.hpp>
 #include <cadmium/modeling/message_box.hpp>
+#include <cadmium/modeling/pack.hpp>
 
 #include <algorithm>
+#include <cstddef>
 #include <limits>
 #include <ostream>
 #include <stdexcept>
+#include <string>
 #include <tuple>
 #include <typeinfo>
 
@@ -53,6 +56,43 @@ namespace cadmium {
             template <template <typename T> class MODEL, typename TIME>
                 requires cadmium::concepts::devs::CoupledModel<MODEL<TIME>>
             class coordinator;
+
+            template <template <typename T> class PACKM, typename TIME> class pack_engine;
+
+            // ── Pack-aware engine access ─────────────────────────────────────────
+            //
+            // Engines expose either the plain single-model interface
+            // (simulator/coordinator) or the per-element pack interface
+            // (pack_engine). These helpers give the generic algorithms a
+            // uniform flat-index view: a plain engine is one element; a pack
+            // contributes pack_size elements. SELECT indices are flat across
+            // the whole subcoordinator tuple, so with no packs present they
+            // degrade to the historical tuple indices unchanged.
+
+            template <typename ENG> constexpr std::size_t engine_element_count(const ENG &eng) {
+                if constexpr (requires { eng.element_count(); }) {
+                    return eng.element_count();
+                } else {
+                    return 1;
+                }
+            }
+
+            template <typename ENG> auto engine_next_of(const ENG &eng, std::size_t k) {
+                if constexpr (requires { eng.next_of(k); }) {
+                    return eng.next_of(k);
+                } else {
+                    return eng.next();
+                }
+            }
+
+            template <typename TIME, typename ENG>
+            void engine_collect_outputs_of(ENG &eng, std::size_t k, const TIME &t) {
+                if constexpr (requires { eng.collect_outputs_of(k, t); }) {
+                    eng.collect_outputs_of(k, t);
+                } else {
+                    eng.collect_outputs(t);
+                }
+            }
 
             // ── Message-box utilities ─────────────────────────────────────────────
 
@@ -123,12 +163,43 @@ namespace cadmium {
                 using type = coordinator<M, TIME>;
             };
 
+            // Three-way engine selection: pack marker -> pack_engine,
+            // atomic -> simulator, otherwise -> coordinator. The indirection
+            // keeps unchosen constrained templates un-named.
+            template <int KIND, template <typename> class M, typename TIME>
+            struct devs_select_engine_kind;
+
+            template <template <typename> class M, typename TIME>
+            struct devs_select_engine_kind<0, M, TIME> {
+                using type = simulator<M, TIME>;
+            };
+
+            template <template <typename> class M, typename TIME>
+            struct devs_select_engine_kind<1, M, TIME> {
+                using type = coordinator<M, TIME>;
+            };
+
+            template <template <typename> class M, typename TIME>
+            struct devs_select_engine_kind<2, M, TIME> {
+                using type = pack_engine<M, TIME>;
+            };
+
+            template <typename M_FLOAT> constexpr int devs_engine_kind_of() {
+                if constexpr (cadmium::concepts::devs::PackModel<M_FLOAT>) {
+                    return 2;
+                } else if constexpr (cadmium::concepts::devs::AtomicModel<M_FLOAT, float>) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            }
+
             template <typename TIME, template <typename> class MT, std::size_t S, typename... COS>
             struct devs_coordinate_tuple_impl {
                 template <typename T> using current = std::tuple_element_t<S - 1, MT<T>>;
-                using current_coordinated           = typename devs_select_engine_type<
-                              cadmium::concepts::devs::AtomicModel<current<float>, float>, current,
-                              TIME>::type;
+                using current_coordinated =
+                    typename devs_select_engine_kind<devs_engine_kind_of<current<float>>(), current,
+                                                     TIME>::type;
                 using type = typename devs_coordinate_tuple_impl<TIME, MT, S - 1,
                                                                  current_coordinated, COS...>::type;
             };
@@ -203,19 +274,28 @@ namespace cadmium {
                 return min_next_in_tuple_impl<T, std::tuple_size<T>::value>::value(t);
             }
 
-            // ── Default SELECT: picks the first imminent model by tuple index ──────
+            // ── Default SELECT: first imminent element by flat index ──────────────
+            //
+            // Flat indices enumerate every element of every tuple slot in
+            // declaration order (a pack contributes pack_size consecutive
+            // indices — within-pack ties therefore break by ascending element
+            // index). With no packs present this is the historical
+            // first-by-tuple-index behavior.
 
             struct first_imminent {
                 template <typename CST, typename TIME>
                 static std::size_t apply(const CST &cs, TIME t_n) {
                     std::size_t result = std::numeric_limits<std::size_t>::max();
-                    std::size_t i      = 0;
+                    std::size_t flat   = 0;
                     auto f             = [&](const auto &eng) {
-                        if (result == std::numeric_limits<std::size_t>::max() &&
-                            eng.next() == t_n) {
-                            result = i;
+                        const std::size_t count = engine_element_count(eng);
+                        for (std::size_t k = 0; k < count; ++k) {
+                            if (result == std::numeric_limits<std::size_t>::max() &&
+                                engine_next_of(eng, k) == t_n) {
+                                result = flat + k;
+                            }
                         }
-                        ++i;
+                        flat += count;
                     };
                     std::apply([&](const auto &...engs) { (f(engs), ...); }, cs);
                     if (result == std::numeric_limits<std::size_t>::max()) {
@@ -225,42 +305,101 @@ namespace cadmium {
                 }
             };
 
-            // ── Selective collect / advance ───────────────────────────────────────
+            // ── Selective collect / advance (flat-index edition) ──────────────────
 
-            // Call collect_outputs(t) on the subengine at tuple index `selected`.
+            // Call collect_outputs on the element at flat index `selected`.
             template <typename TIME, typename CST>
             void collect_selected_output(const TIME &t, CST &cs, std::size_t selected) {
-                std::size_t i = 0;
-                auto f        = [&](auto &eng) {
-                    if (i++ == selected)
-                        eng.collect_outputs(t);
+                std::size_t base = 0;
+                auto f           = [&](auto &eng) {
+                    const std::size_t count = engine_element_count(eng);
+                    if (selected >= base && selected < base + count) {
+                        engine_collect_outputs_of(eng, selected - base, t);
+                    }
+                    base += count;
                 };
                 std::apply([&](auto &...engs) { (f(engs), ...); }, cs);
             }
 
-            // Advance the selected engine plus every engine whose inbox is non-empty.
-            // Other imminent models are left untouched (SELECT serialises them).
+            // Advance the selected element plus every engine/element whose inbox is
+            // non-empty. Other imminent models are left untouched (SELECT
+            // serialises them).
             template <typename TIME, typename CST>
             void advance_selected_and_receivers(const TIME &t, CST &cs, std::size_t selected) {
-                std::size_t i = 0;
-                auto f        = [&](auto &eng) {
-                    if (i++ == selected || !eng.inbox_empty())
-                        eng.advance_simulation(t);
+                std::size_t base = 0;
+                auto f           = [&](auto &eng) {
+                    const std::size_t count = engine_element_count(eng);
+                    const bool in_slot      = selected >= base && selected < base + count;
+                    if constexpr (requires { eng.advance_element_and_receivers(t, selected); }) {
+                        const std::size_t local =
+                            in_slot ? selected - base
+                                              : std::remove_reference_t<decltype(eng)>::npos;
+                        if (in_slot || !eng.inbox_empty()) {
+                            eng.advance_element_and_receivers(t, local);
+                        }
+                    } else {
+                        if (in_slot || !eng.inbox_empty()) {
+                            eng.advance_simulation(t);
+                        }
+                    }
+                    base += count;
                 };
                 std::apply([&](auto &...engs) { (f(engs), ...); }, cs);
             }
 
-            // Advance only engines with non-empty inbox (EIC external-input case).
+            // Advance only engines/elements with non-empty inbox (EIC case).
             template <typename TIME, typename CST>
             void advance_receivers_only(const TIME &t, CST &cs) {
                 auto f = [&](auto &eng) {
-                    if (!eng.inbox_empty())
+                    if (eng.inbox_empty()) {
+                        return;
+                    }
+                    if constexpr (requires {
+                                      eng.advance_element_and_receivers(
+                                          t, std::remove_reference_t<decltype(eng)>::npos);
+                                  }) {
+                        eng.advance_element_and_receivers(
+                            t, std::remove_reference_t<decltype(eng)>::npos);
+                    } else {
                         eng.advance_simulation(t);
+                    }
                 };
                 std::apply([&](auto &...engs) { (f(engs), ...); }, cs);
             }
 
             // ── EOC routing (message_box edition) ────────────────────────────────
+
+            // Compile-time element index of a coupling-entry endpoint:
+            // modeling::not_packed for plain entries/endpoints.
+            // "[i]" suffix for pack-element routing log lines; empty when plain.
+            inline std::string pack_suffix(std::size_t idx) {
+                return idx == cadmium::modeling::not_packed ? std::string{}
+                                                            : "[" + std::to_string(idx) + "]";
+            }
+
+            template <typename E> consteval std::size_t entry_pack_index() {
+                if constexpr (requires { E::index; }) {
+                    return E::index;
+                } else {
+                    return cadmium::modeling::not_packed;
+                }
+            }
+
+            template <typename E> consteval std::size_t entry_from_index() {
+                if constexpr (requires { E::from_index; }) {
+                    return E::from_index;
+                } else {
+                    return cadmium::modeling::not_packed;
+                }
+            }
+
+            template <typename E> consteval std::size_t entry_to_index() {
+                if constexpr (requires { E::to_index; }) {
+                    return E::to_index;
+                } else {
+                    return cadmium::modeling::not_packed;
+                }
+            }
 
             template <typename TIME, typename EOC, std::size_t S, typename OUT_BOX, typename CST>
             struct collect_messages_by_eoc_devs_impl {
@@ -268,16 +407,24 @@ namespace cadmium {
                 using ext_out_port = typename current_eoc::external_output_port;
                 using sub_from     = typename current_eoc::template submodel<TIME>;
                 using sub_out_port = typename current_eoc::submodel_output_port;
+                static constexpr std::size_t from_idx = entry_pack_index<current_eoc>();
 
                 static void fill(OUT_BOX &out, CST &cst) {
-                    const auto &from_opt = get_engine_by_model<sub_from, CST>(cst)
-                                               .template outbox_port<sub_out_port>();
+                    auto &from_engine    = get_engine_by_model<sub_from, CST>(cst);
+                    const auto &from_opt = [&]() -> decltype(auto) {
+                        if constexpr (from_idx != cadmium::modeling::not_packed) {
+                            return from_engine.template element_outbox_port<sub_out_port>(from_idx);
+                        } else {
+                            return from_engine.template outbox_port<sub_out_port>();
+                        }
+                    }();
                     if (from_opt.has_value()) {
                         cadmium::get_message<ext_out_port>(out) = from_opt;
                         std::ostringstream oss;
                         cadmium::logger::print_value_or_name(oss, from_opt.value());
                         cadmium::log::emit(cadmium::log::level::debug, "coor_routing_collect_eoc",
-                                           std::string(typeid(sub_from).name()) + " [" +
+                                           std::string(typeid(sub_from).name()) +
+                                               pack_suffix(from_idx) + " [" +
                                                typeid(sub_out_port).name() + "] -> [" +
                                                typeid(ext_out_port).name() + "] " + oss.str());
                     }
@@ -309,20 +456,34 @@ namespace cadmium {
                 using to_model   = typename current_IC::template to_model<TIME>;
                 using to_port    = typename current_IC::to_model_input_port;
 
+                static constexpr std::size_t from_idx = entry_from_index<current_IC>();
+                static constexpr std::size_t to_idx   = entry_to_index<current_IC>();
+
                 static void route(const TIME &t, CST &engines) {
                     auto &from_engine = get_engine_by_model<from_model, CST>(engines);
                     auto &to_engine   = get_engine_by_model<to_model, CST>(engines);
 
-                    const auto &from_opt = from_engine.template outbox_port<from_port>();
+                    const auto &from_opt = [&]() -> decltype(auto) {
+                        if constexpr (from_idx != cadmium::modeling::not_packed) {
+                            return from_engine.template element_outbox_port<from_port>(from_idx);
+                        } else {
+                            return from_engine.template outbox_port<from_port>();
+                        }
+                    }();
                     if (from_opt.has_value()) {
-                        to_engine.template set_inbox_port<to_port>(from_opt);
+                        if constexpr (to_idx != cadmium::modeling::not_packed) {
+                            to_engine.template set_element_inbox_port<to_port>(to_idx, from_opt);
+                        } else {
+                            to_engine.template set_inbox_port<to_port>(from_opt);
+                        }
                         std::ostringstream oss;
                         cadmium::logger::print_value_or_name(oss, from_opt.value());
                         cadmium::log::emit(cadmium::log::level::debug, "coor_routing_collect_ic",
-                                           std::string(typeid(from_model).name()) + " [" +
+                                           std::string(typeid(from_model).name()) +
+                                               pack_suffix(from_idx) + " [" +
                                                typeid(from_port).name() + "] -> " +
-                                               typeid(to_model).name() + " [" +
-                                               typeid(to_port).name() + "] " + oss.str(),
+                                               typeid(to_model).name() + pack_suffix(to_idx) +
+                                               " [" + typeid(to_port).name() + "] " + oss.str(),
                                            cadmium::log::to_sim_double(t));
                     }
 
@@ -351,18 +512,25 @@ namespace cadmium {
                         using to_model    = typename current_EIC::template submodel<TIME>;
                         using to_port     = typename current_EIC::submodel_input_port;
 
+                        constexpr std::size_t to_idx = entry_pack_index<current_EIC>();
+
                         auto &to_engine      = get_engine_by_model<to_model, CST>(engines);
                         const auto &from_opt = cadmium::get_message<from_port>(inbox);
                         if (from_opt.has_value()) {
-                            to_engine.template set_inbox_port<to_port>(from_opt);
+                            if constexpr (to_idx != cadmium::modeling::not_packed) {
+                                to_engine.template set_element_inbox_port<to_port>(to_idx,
+                                                                                   from_opt);
+                            } else {
+                                to_engine.template set_inbox_port<to_port>(from_opt);
+                            }
                             std::ostringstream oss;
                             cadmium::logger::print_value_or_name(oss, from_opt.value());
-                            cadmium::log::emit(cadmium::log::level::debug,
-                                               "coor_routing_collect_eic",
-                                               std::string("[") + typeid(from_port).name() +
-                                                   "] -> " + typeid(to_model).name() + " [" +
-                                                   typeid(to_port).name() + "] " + oss.str(),
-                                               cadmium::log::to_sim_double(t));
+                            cadmium::log::emit(
+                                cadmium::log::level::debug, "coor_routing_collect_eic",
+                                std::string("[") + typeid(from_port).name() + "] -> " +
+                                    typeid(to_model).name() + pack_suffix(to_idx) + " [" +
+                                    typeid(to_port).name() + "] " + oss.str(),
+                                cadmium::log::to_sim_double(t));
                         }
 
                         route_eic_devs_impl<TIME, IN_BOX, CST, EICs, S - 1>::route(t, inbox,

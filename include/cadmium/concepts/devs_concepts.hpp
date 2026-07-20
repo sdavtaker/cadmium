@@ -65,6 +65,22 @@ namespace cadmium::concepts {
                 { m.time_advance() } -> std::same_as<TIME>;
             };
 
+        // ── PackModel ────────────────────────────────────────────────────────────
+
+        /**
+         * PackModel<P> — structural marker produced by
+         * cadmium::modeling::pack<M, N>::model<TIME>: a homogeneous collection
+         * of pack_size instances of one element model, expanded by the engine
+         * at runtime instead of at compile time.
+         */
+        template <typename P>
+        concept PackModel = requires {
+            typename P::element_model;
+            typename P::template element<float>;
+            { P::pack_size } -> std::convertible_to<std::size_t>;
+            requires P::pack_size > 0;
+        };
+
         // ── CoupledModel ─────────────────────────────────────────────────────────
 
         template <typename E>
@@ -107,6 +123,31 @@ namespace cadmium::concepts {
                                    typename E::template to_model<float>>;
         };
 
+        /**
+         * PackICEntry — IC whose endpoints carry element indices (pack_IC).
+         * Same shape as ICEntry, but self-coupling of one pack type is legal
+         * when the element indices differ (element i feeding element j).
+         * Plain endpoints use modeling::not_packed as their index.
+         */
+        template <typename E>
+        concept PackICEntry = requires {
+            { E::from_index } -> std::convertible_to<std::size_t>;
+            { E::to_index } -> std::convertible_to<std::size_t>;
+            typename E::from_model_output_port;
+            typename E::to_model_input_port;
+            requires OutputPort<typename E::from_model_output_port>;
+            requires InputPort<typename E::to_model_input_port>;
+            requires std::same_as<typename E::from_model_output_port::message_type,
+                                  typename E::to_model_input_port::message_type>;
+            requires detail::port_in_tuple_v<typename E::from_model_output_port,
+                                             typename E::template from_model<float>::output_ports>;
+            requires detail::port_in_tuple_v<typename E::to_model_input_port,
+                                             typename E::template to_model<float>::input_ports>;
+            requires !(std::same_as<typename E::template from_model<float>,
+                                    typename E::template to_model<float>> &&
+                       E::from_index == E::to_index);
+        };
+
         template <typename Tuple> struct all_eic_entries_impl : std::false_type {};
         template <typename... Ts>
         struct all_eic_entries_impl<std::tuple<Ts...>> : std::bool_constant<(EICEntry<Ts> && ...)> {
@@ -123,7 +164,8 @@ namespace cadmium::concepts {
 
         template <typename Tuple> struct all_ic_entries_impl : std::false_type {};
         template <typename... Ts>
-        struct all_ic_entries_impl<std::tuple<Ts...>> : std::bool_constant<(ICEntry<Ts> && ...)> {};
+        struct all_ic_entries_impl<std::tuple<Ts...>>
+            : std::bool_constant<((ICEntry<Ts> || PackICEntry<Ts>) && ...)> {};
         template <typename Tuple>
         inline constexpr bool all_ic_entries_v = all_ic_entries_impl<Tuple>::value;
 

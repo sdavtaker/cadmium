@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Pack-of-models coupling (classic DEVS): `cadmium::modeling::pack<M, N>` lets a
+  coupled model declare a runtime vector of N instances of one submodel as a
+  single `models_tuple` entry, with `pack_EIC`/`pack_EOC`/`pack_IC` coupling
+  entries addressing `(pack, index)` — including same-pack element-to-element
+  couplings. New `engine::devs::pack_engine` expands packs at runtime
+  (simulator elements for atomics, coordinator elements for coupled models);
+  SELECT indices are flat across elements with within-pack ties broken by
+  ascending index, and element model ids gain an `[i]` suffix in log lines.
+  Behavior is equivalence-tested against individually-declared submodels.
+
 ## [0.4.2] - 2026-06-19
 
 ### Added

@@ -55,14 +55,24 @@ namespace cadmium {
                 TIME _last{};
                 TIME _next{};
                 std::string _model_id{};
+                std::string _id_suffix{};
                 in_box_type _inbox{};
                 out_box_type _outbox{};
 
               public:
                 using model_type = MODEL<TIME>;
 
+                /**
+                 * Append a disambiguating suffix to the model id used in log
+                 * lines (e.g. "[3]" for pack elements). Must be set before
+                 * init().
+                 */
+                void set_model_id_suffix(std::string suffix) {
+                    _id_suffix = std::move(suffix);
+                }
+
                 void init(TIME initial_time) {
-                    _model_id = cadmium::logger::model_type_name<model_type>();
+                    _model_id = cadmium::logger::model_type_name<model_type>() + _id_suffix;
                     cadmium::log::emit(cadmium::log::level::info, "sim_info_init", _model_id,
                                        cadmium::log::to_sim_double(initial_time));
 
