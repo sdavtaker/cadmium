@@ -30,11 +30,13 @@
 
 #include <cadmium/concepts/devs_concepts.hpp>
 #include <cadmium/engine/devs_engine_helpers.hpp>
+#include <cadmium/engine/devs_pack_engine.hpp>
 #include <cadmium/engine/devs_simulator.hpp>
 #include <cadmium/logger/cadmium_log.hpp>
 #include <cadmium/logger/common_loggers_helpers.hpp>
 #include <cadmium/modeling/coupling.hpp>
 #include <cadmium/modeling/message_box.hpp>
+#include <cadmium/modeling/pack.hpp>
 
 #include <limits>
 #include <optional>
@@ -78,14 +80,24 @@ namespace cadmium {
                 std::size_t _selected{std::numeric_limits<std::size_t>::max()};
                 subcoordinators_type _subcoordinators;
                 std::string _model_id{};
+                std::string _id_suffix{};
                 in_box_type _inbox{};
                 out_box_type _outbox{};
 
               public:
                 using model_type = MODEL<TIME>;
 
+                /**
+                 * Append a disambiguating suffix to the model id used in log
+                 * lines (e.g. "[3]" for pack elements). Must be set before
+                 * init().
+                 */
+                void set_model_id_suffix(std::string suffix) {
+                    _id_suffix = std::move(suffix);
+                }
+
                 void init(TIME t) {
-                    _model_id = cadmium::logger::model_type_name<MODEL<TIME>>();
+                    _model_id = cadmium::logger::model_type_name<MODEL<TIME>>() + _id_suffix;
                     cadmium::log::emit(cadmium::log::level::info, "coor_info_init", _model_id,
                                        cadmium::log::to_sim_double(t));
 
