@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-22
+
 ### Added
 - Pack-of-models coupling (classic DEVS): `cadmium::modeling::pack<M, N>` lets a
   coupled model declare a runtime vector of N instances of one submodel as a
@@ -17,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   SELECT indices are flat across elements with within-pack ties broken by
   ascending index, and element model ids gain an `[i]` suffix in log lines.
   Behavior is equivalence-tested against individually-declared submodels.
+- Opt-in compile-time model naming: `cadmium::fixed_string` (a structural-type
+  NTTP for string literals), the `cadmium::Named` concept (a static constexpr
+  `model_name` member convertible to `std::string_view`), and `cadmium::named<Name>`,
+  a CRTP convenience base a wrapper type can inherit from to satisfy it. NDJSON
+  logging's `model_type_name<T>()` now prefers this compile-time name over the
+  typeid-derived fallback when present. Fully non-breaking: no existing model or
+  coupling signature changes.
 
 ## [0.4.2] - 2026-06-19
 
@@ -99,7 +108,8 @@ structured logging added.
 
 Last upstream release from SimulationEverywhere/cadmium before this fork.
 
-[Unreleased]: https://github.com/sdavtaker/cadmium/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/sdavtaker/cadmium/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/sdavtaker/cadmium/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/sdavtaker/cadmium/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/sdavtaker/cadmium/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/sdavtaker/cadmium/compare/v0.3.1...v0.4.0
