@@ -71,6 +71,31 @@ SCENARIO("emit with sim_time includes the sim_time field in the JSON", "[logger]
     }
 }
 
+SCENARIO("emit dispatches to the spdlog severity matching its own level parameter",
+         "[logger][ndjson]") {
+    GIVEN("a logger writing to an in-memory stream, filtered to warn and above") {
+        oss.str("");
+        auto sink = std::make_shared<spdlog::sinks::ostream_sink_mt>(oss);
+        auto log  = std::make_shared<spdlog::logger>("cadmium", sink);
+        log->set_pattern("%v");
+        log->set_level(spdlog::level::warn); // below warn (debug/info) must be dropped
+        cadmium::log::detail::instance() = log;
+
+        WHEN("a debug-level and an error-level event are both emitted") {
+            cadmium::log::emit(cadmium::log::level::debug, "sim_state", "dropped_by_filter");
+            cadmium::log::emit(cadmium::log::level::error, "sim_error", "kept_by_filter");
+            cadmium::log::flush();
+
+            THEN("only the error-level event passes the filter — proving emit() actually calls "
+                 "the spdlog method matching its lvl argument, not a single hardcoded severity "
+                 "that would make level filtering a no-op regardless of what callers pass") {
+                CHECK(oss.str().find("kept_by_filter") != std::string::npos);
+                CHECK(oss.str().find("dropped_by_filter") == std::string::npos);
+            }
+        }
+    }
+}
+
 SCENARIO("emit is a no-op when the logger is not initialised", "[logger][noop]") {
     GIVEN("no logger has been initialised") {
         cadmium::log::detail::instance() = nullptr;
