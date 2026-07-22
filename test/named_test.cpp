@@ -28,6 +28,7 @@
 #include <cadmium/modeling/named.hpp>
 
 #include <catch2/catch_test_macros.hpp>
+#include <string>
 #include <string_view>
 
 namespace {
@@ -99,6 +100,30 @@ SCENARIO("model_type_name still falls back to typeid for unnamed types", "[named
         THEN("model_type_name returns typeid(T).name(), unchanged from before this feature") {
             CHECK(cadmium::logger::model_type_name<unnamed_model>() ==
                   typeid(unnamed_model).name());
+        }
+    }
+}
+
+namespace {
+
+    // A type using the older, static-method form of the naming hook —
+    // not Named (model_name is a method, not a constexpr member), so this
+    // exercises model_type_name's middle fallback branch.
+    struct legacy_named_model {
+        static std::string model_name() {
+            return "legacy_named_model";
+        }
+    };
+
+} // namespace
+
+SCENARIO("model_type_name still honors the older static-method naming hook", "[named][logger]") {
+    GIVEN("a type providing model_name() as a static method rather than a constexpr member") {
+        THEN("it does not satisfy the new Named concept") {
+            STATIC_REQUIRE_FALSE(cadmium::Named<legacy_named_model>);
+        }
+        THEN("model_type_name still calls through to it, unchanged from before this feature") {
+            CHECK(cadmium::logger::model_type_name<legacy_named_model>() == "legacy_named_model");
         }
     }
 }
