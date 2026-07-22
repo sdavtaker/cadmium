@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /**
- * Copyright (c) 2013-present, Damian Vicino
- * Carleton University, Universite de Nice-Sophia Antipolis
+ * Copyright (c) 2026-present, Damian Vicino
+ * Carleton University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,9 +40,9 @@ namespace cadmium {
      * A compile-time string literal usable as a non-type template
      * parameter (a "structural type", permitted as an NTTP since C++20).
      * Stores a fixed-size, always null-terminated buffer, so a value can
-     * be compared, hashed, and used to parameterize other templates
-     * entirely at compile time — the property `model_name` below needs
-     * so it stays usable both for logging (a runtime string_view) and,
+     * be compared and used to parameterize other templates entirely at
+     * compile time — the property `model_name` below needs so it stays
+     * usable both for logging (a runtime string_view) and,
      * later, for compile-time coupling/model-identity checks.
      */
     template <std::size_t N> struct fixed_string {

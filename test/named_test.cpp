@@ -1,6 +1,6 @@
 /**
- * Copyright (c) 2013-present, Damian Vicino
- * Carleton University, Universite de Nice-Sophia Antipolis
+ * Copyright (c) 2026-present, Damian Vicino
+ * Carleton University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,7 +28,6 @@
 #include <cadmium/modeling/named.hpp>
 
 #include <catch2/catch_test_macros.hpp>
-#include <sstream>
 #include <string_view>
 
 namespace {
