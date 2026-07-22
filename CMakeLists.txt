@@ -124,6 +124,7 @@ if(CADMIUM_BUILD_TESTS)
             pdevs_passive_model_test
             tuple_to_ostream_test
             logger_test
+            named_test
             pdevs_engine_helper_test
             pdevs_dynamic_atomic_test
             pdevs_dynamic_atomic_helpers_test
