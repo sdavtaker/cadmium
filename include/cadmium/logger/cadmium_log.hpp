@@ -128,7 +128,20 @@ namespace cadmium::log {
             line += std::format(R"(,"sim_time":{:.17g}}})", *sim_time);
         }
 
-        log->info(line);
+        switch (lvl) {
+        case level::debug:
+            log->debug(line);
+            break;
+        case level::info:
+            log->info(line);
+            break;
+        case level::warn:
+            log->warn(line);
+            break;
+        case level::error:
+            log->error(line);
+            break;
+        }
     }
 
     inline void flush() noexcept {
