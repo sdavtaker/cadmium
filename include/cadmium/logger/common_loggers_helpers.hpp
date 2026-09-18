@@ -29,6 +29,7 @@
 #define CADMIUM_COMMON_LOGGERS_HELPERS_HPP
 
 #include <cadmium/modeling/message_bag.hpp>
+#include <cadmium/modeling/named.hpp>
 
 #include <concepts>
 #include <iostream>
@@ -57,13 +58,20 @@ namespace cadmium {
 
         // ── item 6: stable model-type name ────────────────────────────────────
 
-        // Returns T::model_name() if the model provides it as a static method,
-        // otherwise falls back to typeid(T).name() (implementation-defined,
-        // but at least in a single place that can be updated later).
+        // Prefers a compile-time name (cadmium::Named<T>: a static
+        // constexpr `model_name` member, e.g. via inheriting from
+        // `cadmium::named<"...">`) over the older, unused-in-tree
+        // `T::model_name()` static-method hook (kept only for backward
+        // compatibility with anything that may already implement it),
+        // falling back to typeid(T).name() (implementation-defined, but at
+        // least in a single place that can be updated later) if neither is
+        // present.
         template <typename T> std::string model_type_name() {
-            if constexpr (requires {
-                              { T::model_name() } -> std::convertible_to<std::string>;
-                          })
+            if constexpr (cadmium::Named<T>)
+                return std::string(std::string_view(T::model_name));
+            else if constexpr (requires {
+                                   { T::model_name() } -> std::convertible_to<std::string>;
+                               })
                 return T::model_name();
             else
                 return typeid(T).name();

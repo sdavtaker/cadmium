@@ -6,7 +6,7 @@ if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
         CACHE STRING "")
 endif()
 
-project(cadmium VERSION 0.4.2 LANGUAGES CXX)
+project(cadmium VERSION 0.5.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -124,6 +124,7 @@ if(CADMIUM_BUILD_TESTS)
             pdevs_passive_model_test
             tuple_to_ostream_test
             logger_test
+            named_test
             pdevs_engine_helper_test
             pdevs_dynamic_atomic_test
             pdevs_dynamic_atomic_helpers_test
