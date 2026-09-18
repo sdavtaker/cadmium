@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-09-18
+
+### Fixed
+- `cadmium::log::emit()` now dispatches to the spdlog severity matching its own
+  `level` argument (`debug`/`info`/`warn`/`error`) instead of always calling
+  `log->info(...)` regardless of level. Previously `logger->set_level(...)`
+  could not separate debug-level verbosity from info-or-above content: any
+  threshold at or below info showed everything (including error-level events),
+  and any threshold above info hid everything (including errors). Includes a
+  regression test proving level-based filtering now works.
+
 ## [0.5.0] - 2026-07-22
 
 ### Added
